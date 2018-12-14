@@ -186,6 +186,7 @@ classdef SpokeModel < most.Model
         diagramm; %Temporary figure for debugging.
         diagrammm; %Temporary figure 2 for debugging.
         debug = false; % Set to true to enable debugging.
+        ticTimer;
     end
     
     properties (Hidden, SetAccess=immutable)
@@ -195,6 +196,7 @@ classdef SpokeModel < most.Model
         neuralChansAvailable;
         analogMuxChansAvailable;
         analogSoloChansAvailable;
+        
     end
     
     properties (SetAccess=protected,Hidden,SetObservable,AbortSet)
@@ -1111,6 +1113,7 @@ classdef SpokeModel < most.Model
             obj.bmarkPostProcessTimeStats = zeros(3,1);
             
             %Start timer(s)
+            obj.ticTimer = tic();
             start(hTimers);
             
             obj.running = true;
@@ -1420,6 +1423,7 @@ classdef SpokeModel < most.Model
                 
                 % cnt = GetScanCount(obj.hSGL);
                 
+fprintf('CPU time since start: %s\n',toc(obj.ticTimer));                
                 cnt = obj.sglDeviceFcns.GetScanCount(obj.hSGL);
                 
                 %Use current scan number as reference scan number on first timer entry following start/restart
@@ -1431,7 +1435,7 @@ classdef SpokeModel < most.Model
                 else
                     obj.maxReadableScanNum = cnt;
                 end
-                
+fprintf('MaxReadableScanNum: %d\n',cnt);                
                 numNeuralChans = numel(obj.neuralChanAcqList);
 
                 rmsMultipleThresh = strcmpi(obj.thresholdType,'rmsMultiple');
@@ -1540,6 +1544,7 @@ classdef SpokeModel < most.Model
                 %   * 'refractory period'(discarded)
                 %   * final 'post-trigger' time, as spec'd by horizontalRange  (processed during next timer period)
                 
+fprintf('Detect spikes starting from scan num %d\n',bufStartScanNum);                
                 if ~stimulusTriggeredWaveformMode
                     if rmsMultipleInitializing %Handle case where no RMS data has been computed yet
                         %obj.fullDataBuffer((obj.refreshPeriodAvgScans+1):end,:) = []; %VVV062812: Is this needed/wanted?
