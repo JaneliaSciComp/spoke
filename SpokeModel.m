@@ -1415,7 +1415,9 @@ classdef SpokeModel < most.Model
                 
                 % cnt = GetScanCount(obj.hSGL);
                 
-fprintf('CPU time since start: %s\n',toc(obj.ticTimer));                
+fprintf('CPU time since start: %s\n',toc(obj.ticTimer));  
+fprintf('Scan Count: %d\n',cnt);                
+
                 cnt = obj.sglDeviceFcns.GetScanCount(obj.hSGL);
                 
                 %Use current scan number as reference scan number on first timer entry following start/restart
@@ -1427,7 +1429,6 @@ fprintf('CPU time since start: %s\n',toc(obj.ticTimer));
                 else
                     obj.maxReadableScanNum = cnt;
                 end
-fprintf('MaxReadableScanNum: %d\n',cnt);                
                 numNeuralChans = numel(obj.neuralChanAcqList);
 
                 rmsMultipleActive = isequal(obj.thresholdType,'rmsMultiple') || isequal(obj.waveformAmpUnits,'rmsMultiple');
@@ -1469,12 +1470,17 @@ fprintf('MaxReadableScanNum: %d\n',cnt);
                     fprintf(2,'WARNING. A large number of queued-up samples to read detected: %d. If intermittent, this should not cause a problem.\n',scansToRead_ - scansToRead);
                 end
                 
+fprintf('scansToRead: %d\n',scansToRead);                
+                
+                
                 %STAGE 1: Read newly available data
                 %[scansToRead, newData] = znstReadAvailableData(obj.maxReadableScanNum-obj.priorfileMaxReadableScanNum-scansToRead,scansToRead); %obj.bufScanNumEnd will be 0 in case of file-rollover or SpikeGL stop/restart
                 %                 newData = GetDAQData(obj.hSGL,obj.lastMaxReadableScanNum,scansToRead,obj.sglSaveChans);
                 newData = obj.sglDeviceFcns.Fetch(obj.hSGL,obj.lastMaxReadableScanNum,scansToRead,obj.sglSaveChans);
                 obj.lastMaxReadableScanNum = obj.lastMaxReadableScanNum + scansToRead;
                 t1 = toc(t0);
+fprintf('length(newData): %d\n',length(newData));                
+                
                 
                 %STAGE 2: Apply global mean subtraction, if applicable. Applies only to neural channels. TODO: Restrict to displayed channels
                 if obj.globalMeanSubtraction
