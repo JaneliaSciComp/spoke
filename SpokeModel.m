@@ -733,7 +733,7 @@ classdef SpokeModel < most.Model
                     end
                 case 'raster'
                     if val < obj.SPIKE_REFRACTORY_PERIOD_MIN
-                        warning('Spike refractory period must be at least %d, to limit excessive spike detection & processing time. Set value to %d.',obj.SPIKE_REFRACTORY_PERIOD_MIN);
+                        warning('Spike refractory period must be at least %d, to limit excessive spike detection & processing time. Set value to %d.',obj.SPIKE_REFRACTORY_PERIOD_MIN,obj.SPIKE_REFRACTORY_PERIOD_MIN);
                         obj.spikeRefractoryPeriod = obj.SPIKE_REFRACTORY_PERIOD_MIN;
                     else
                         obj.spikeRefractoryPeriod = val;
