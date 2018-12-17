@@ -42,7 +42,7 @@ classdef SpokeModel < most.Model
         verticalRangeRasterInfIncrement = 20; %When verticalRangeRaster(2)=Inf, specify the increment in which the number of stimuli displayed are incremented by.
         stimEventTypesDisplayed = {}; %String or string cell array indicating which event type(s) to display raster/PSTH data for.
         
-        spikeRefractoryPeriod = 2e-3; %Time, in seconds, to prevent detection of spike following previously detected spike. When displayMode='waveform', this value is given by second element of horizontalRange.
+        spikeRefractoryPeriod = 2e-3; %Time, in seconds, to prevent detection of spike following previously detected spike. When displayMode='waveform', this value is determined by second element of horizontalRange.
         
         psthTimeBin = 10e-3; %Time, in seconds, over which to bin spikes for PSTH summary plot
         psthAmpRange = [0 120]; %Amplitude range to display, in units of spikes/second
@@ -234,6 +234,8 @@ classdef SpokeModel < most.Model
         RASTER_DISP_STIM_RANGE_INCREMENT_FRACTION = 0.85; %fraction of verticalRangeRasterInfIncrement which must be reached before display range is auto-incremented.
         
         SGL_BITS_PER_SAMPLE = 16; %A constant from SpikeGLX currently; should perhaps update SpikeGL to pull this from the DAQmx API
+        
+        SPIKE_REFRACTORY_PERIOD_MIN = 1e-3; %Minimum spike refractory period, i.e. fastest spike detection rate to allow. 
     end
     
     %% CONSTRUCTOR/DESTRUCTOR
@@ -662,12 +664,19 @@ classdef SpokeModel < most.Model
             obj.zprpAssertNotRunning('horizontalRange');
             obj.validatePropArg('horizontalRange',val);
             
+            %Ensure range includes both negative & positive times. In principle other use cases could be supported, but they would affect other logic and haven't been requested.
+            assert(val(1)<0 && val(2)>0, 'Horizontal range should span from a pre-event (negative) to a post-event (positive) time value');
+            
             %Ensure value does not exceed processing refresh period
             dval = diff(val);
             f_samp = obj.sglParamCache.niSampRate;
             assert(dval > 0,'Horizontal range must be specified from minimum to maximum');
             assert(ceil(dval * f_samp) < floor(f_samp/obj.refreshRate),'horizontalRange must be shorter than the processing refresh period');
             
+            %Ensure positive range corresponds to at least the minimum spike refractory period
+            %Nit: Technically this isn't needed for stim-triggered waveform mode (i.e. no spike detection), but let's apply the same rule since there's no known use case for a smaller range in this mode
+            assert(val(2) > obj.SPIKE_REFRACTORY_PERIOD_MIN, 'Horizontal range post-event time must exceed the minimum spike refractory period time (%d)', obj.SPIKE_REFRACTORY_PERIOD_MIN);
+                        
             obj.horizontalRange = val;
             
             %Side-effects
@@ -723,7 +732,12 @@ classdef SpokeModel < most.Model
                         fprintf(2,'WARNING: When displayMode = ''waveform'', the ''spikeRefractoryPeriod'' cannot be directly set. Value specified ignored.\n')
                     end
                 case 'raster'
-                    obj.spikeRefractoryPeriod = val;
+                    if val < obj.SPIKE_REFRACTORY_PERIOD_MIN
+                        warning('Spike refractory period must be at least %d, to limit excessive spike detection & processing time. Set value to %d.',obj.SPIKE_REFRACTORY_PERIOD_MIN,obj.SPIKE_REFRACTORY_PERIOD_MIN);
+                        obj.spikeRefractoryPeriod = obj.SPIKE_REFRACTORY_PERIOD_MIN;
+                    else
+                        obj.spikeRefractoryPeriod = val;
+                    end
             end
         end
         
