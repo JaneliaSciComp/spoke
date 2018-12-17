@@ -664,7 +664,7 @@ classdef SpokeModel < most.Model
             obj.zprpAssertNotRunning('horizontalRange');
             obj.validatePropArg('horizontalRange',val);
             
-            %Ensure range includes both negative & positive times. In principle other use cases coudl be supported, but they would affect other logic and haven't been requested.
+            %Ensure range includes both negative & positive times. In principle other use cases could be supported, but they would affect other logic and haven't been requested.
             assert(val(1)<0 && val(2)>0, 'Horizontal range should span from a pre-event (negative) to a post-event (positive) time value');
             
             %Ensure value does not exceed processing refresh period
@@ -675,7 +675,7 @@ classdef SpokeModel < most.Model
             
             %Ensure positive range corresponds to at least the minimum spike refractory period
             %Nit: Technically this isn't needed for stim-triggered waveform mode (i.e. no spike detection), but let's apply the same rule since there's no known use case for a smaller range in this mode
-            assert(val(2) > obj.SPIKE_REFRACTORY_PERIOD_MIN, 'Horizontal range post-event time must exceed the minimum spike refractory period time (%d)');
+            assert(val(2) > obj.SPIKE_REFRACTORY_PERIOD_MIN, 'Horizontal range post-event time must exceed the minimum spike refractory period time (%d)', obj.SPIKE_REFRACTORY_PERIOD_MIN);
                         
             obj.horizontalRange = val;
             
