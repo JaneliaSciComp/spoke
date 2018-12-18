@@ -1660,13 +1660,13 @@ classdef SpokeModel < most.Model
                 std = sqrt((obj.bmarkPostProcessTimeStats(2)^2 * n + (procTimePost - mu)^2)/ (n+1));
                 obj.bmarkPostProcessTimeStats(1) = mu;
                 obj.bmarkPostProcessTimeStats(2) = std;
-                obj.bmarkPostProcessTimeStats(3) = obj.bmarkPostProcessTimeStats(3) + 1;
-%                                fprintf('Total Time (%d scans/%d chans): %g -- Read: <%g, %g, %g> Plot: <%g, %g, %g> PreProc: <%g, %g, %g> PostProc: <%g, %g, %g> (Format: <last, mean, std>)\n', ...
-%                                    scansToRead,size(newData,2),1000*t8,...
-%                                    readTime,obj.bmarkReadTimeStats(1),obj.bmarkReadTimeStats(2),...
-%                                    plotTime,obj.bmarkPlotTimeStats(1),obj.bmarkPlotTimeStats(2),...
-%                                    procTimePre,obj.bmarkPreProcessTimeStats(1),obj.bmarkPreProcessTimeStats(2),...
-%                                    procTimePost,obj.bmarkPostProcessTimeStats(1),obj.bmarkPostProcessTimeStats(2));
+                obj.bmarkPostProcessTimeStats(3) = obj.bmarkPostProcessTimeStats(3) + 1;               
+                               fprintf('Total Time (%d scans/%d chans): %g -- Read: <%g, %g, %g> Plot: <%g, %g, %g> PreProc: <%g, %g, %g> PostProc: <%g, %g, %g> (Format: <last, mean, std>)\n', ...
+                                   scansToRead,size(newData,2),1000*t8,...
+                                   readTime,obj.bmarkReadTimeStats(1),obj.bmarkReadTimeStats(2),...
+                                   plotTime,obj.bmarkPlotTimeStats(1),obj.bmarkPlotTimeStats(2),...
+                                   procTimePre,obj.bmarkPreProcessTimeStats(1),obj.bmarkPreProcessTimeStats(2),...
+                                   procTimePost,obj.bmarkPostProcessTimeStats(1),obj.bmarkPostProcessTimeStats(2));
                 
             catch ME %Handle Timer CB errors
                 most.idioms.reportError(ME);
@@ -2821,6 +2821,11 @@ end
 
 localspikes = cell(numChans,1);
 
+david_newSpikeScanNums = cell(numChans,1);
+david_spikesFoundPerChan = zeros(numChans,1);
+david_localspikes = cell(numChans,1);
+
+
 for h=1:numChans
     
     %Determine recent (already detected) spike scan numbers to exclude from spike search
@@ -2837,58 +2842,95 @@ for h=1:numChans
     
     currIdx = 1;
     %currIdx = abs(horizontalRangeScans(1)); %DEPRECATED. Removed spike detection dependence on horizontalRange; no known justification for this dependence at this time
-        
-    while currIdx < scansToSearch
-        %fprintf('currIdx: %d scansToSearch: %d postSpikeNumScans: %d\n',currIdx,scansToSearch,postSpikeNumScans);
-        %Find at most one spike (threshold crossing) in the fullDataBuffer
-        if thresholdAbsolute %Find crossings above or below absolute threshold level
-            nextSpikeIdx = currIdx + find(diff(abs(fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) > abs(thresholdVal(h))) == 1,1);
-        else
-            if thresholdVal >= 0 %Find crossings above threshold level
-                nextSpikeIdx = currIdx + find(diff((fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) > thresholdVal(h)) == 1,1); %Find at most one spike
-            else %Find crossings below threshold level
-                nextSpikeIdx = currIdx + find(diff((fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) < thresholdVal(h)) == 1,1); %Find at most one spike
-            end
+    tic;
+    if thresholdAbsolute %Find crossings above or below absolute threshold level
+        diffArray = diff(abs(fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) > abs(thresholdVal(h))); %should this be same logic as below?
+    else
+        if thresholdVal >= 0 %Find crossings above threshold level
+            diffArray = diff((fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) > thresholdVal(h)); 
+        else %Find crossings below threshold level
+            diffArray = diff((fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) < thresholdVal(h));
         end
-        
-        if isempty(nextSpikeIdx) %no spikes found in whole remainder of fullDataBuffer
-            break;
-        else
-            spikesFound = spikesFound + 1;
-            
-            if spikesFound > maxNumSpikes
-                maxNumWaveformsApplied = true;
-                break;
-            end
-        end
-        
-        nextSpikeScanNum = bufStartScanNum + nextSpikeIdx - 1;
-        
-        %Add new spike, if not added already
-        if ~ismember(nextSpikeScanNum,recentSpikeScanNums)
-            %Note: fullDataBuffer is in "local" space. This means that it
-            %is zero referenced to the beginning of the current "block" of
-            %samples.
-            %
-            %bufStartScanNum is in spikeglx's "global space". This means
-            %that a bufStartScanNum of 0 is the very beginning of the
-            %spikeglx acquisition.
-            %
-            %This is why nextSpikeScanNum adds the nextSpikeIdx to the
-            %bufStartScanNum. Think of bufStartScanNum as being the offset
-            %in "Global Space" that equals zero in the "local space".
-            newSpikeScanNums{h}(end+1) = nextSpikeScanNum;
-            localspikes{h}(end+1) = nextSpikeIdx;
-            %fprintf('bufStartScanNum: %d, nextSpikeScanNum: %d, size of fullDataBuffer: %s \n',bufStartScanNum, nextSpikeScanNum, sprintf('%d ',size(fullDataBuffer)));
-            spikesFoundPerChan(h) = spikesFoundPerChan(h) + 1;
-            
-        end
-        
-        %Impose refractory period
-        currIdx = nextSpikeIdx + postSpikeNumScans; %Will start with final scan of the post-spike-window...to use as first scan for next diff operation (first element never selected)
     end
+    crossingThresholdIdx = find(diffArray == 1)' + 1; %Add one because diff results starts at second index    
+    tic;
+    idxToKeep = false(size(crossingThresholdIdx));
+    idxToKeep(1)=1;
+    i=1;
+    while i<=numel(crossingThresholdIdx)
+        i=find(crossingThresholdIdx>crossingThresholdIdx(i)+postSpikeNumScans,1);
+        idxToKeep(i)=true;
+    end
+    crossingThresholdIdx = crossingThresholdIdx(idxToKeep);
     
+    validSpikeIdx = crossingThresholdIdx;%([1, find(scansBetweenCrossings>postSpikeNumScans) + 1]); %Make sure to include the first crossing
+    if length(validSpikeIdx) > maxNumSpikes
+        maxNumWaveformsApplied = true;
+        validSpikeIdx = validSpikeIdx(1:maxNumSpikes);       
+    end
+    spikesFound = length(validSpikeIdx);
+    spikeScanNums = bufStartScanNum + validSpikeIdx - 1;
+    newSpikes = ~ismember(spikeScanNums,recentSpikeScanNums);
+    david_newSpikeScanNums{h} = [david_newSpikeScanNums{h} , spikeScanNums( newSpikes )];
+    david_localspikes{h} = [david_localspikes{h} , validSpikeIdx( newSpikes )];
+    david_spikesFoundPerChan(h) = sum(newSpikes);
+    t1=toc();
+    
+%    tic;
+%     while currIdx < scansToSearch
+%         %fprintf('currIdx: %d scansToSearch: %d postSpikeNumScans: %d\n',currIdx,scansToSearch,postSpikeNumScans);
+%         %Find at most one spike (threshold crossing) in the fullDataBuffer
+%         if thresholdAbsolute %Find crossings above or below absolute threshold level
+%             nextSpikeIdx = currIdx + find(diff(abs(fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) > abs(thresholdVal(h))) == 1,1);
+%         else
+%             if thresholdVal >= 0 %Find crossings above threshold level
+%                 nextSpikeIdx = currIdx + find(diff((fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) > thresholdVal(h)) == 1,1); %Find at most one spike
+%             else %Find crossings below threshold level
+%                 nextSpikeIdx = currIdx + find(diff((fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) < thresholdVal(h)) == 1,1); %Find at most one spike
+%             end
+%         end
+%         
+%         if isempty(nextSpikeIdx) %no spikes found in whole remainder of fullDataBuffer
+%             break;
+%         else
+%             spikesFound = spikesFound + 1;
+%             
+%             if spikesFound > maxNumSpikes
+%                 maxNumWaveformsApplied = true;
+%                 break;
+%             end
+%         end
+%         
+%         nextSpikeScanNum = bufStartScanNum + nextSpikeIdx - 1;
+%         
+%         %Add new spike, if not added already
+%         if ~ismember(nextSpikeScanNum,recentSpikeScanNums)
+%             %Note: fullDataBuffer is in "local" space. This means that it
+%             %is zero referenced to the beginning of the current "block" of
+%             %samples.
+%             %
+%             %bufStartScanNum is in spikeglx's "global space". This means
+%             %that a bufStartScanNum of 0 is the very beginning of the
+%             %spikeglx acquisition.
+%             %
+%             %This is why nextSpikeScanNum adds the nextSpikeIdx to the
+%             %bufStartScanNum. Think of bufStartScanNum as being the offset
+%             %in "Global Space" that equals zero in the "local space".
+%             newSpikeScanNums{h}(end+1) = nextSpikeScanNum;
+%             localspikes{h}(end+1) = nextSpikeIdx;
+%             %fprintf('bufStartScanNum: %d, nextSpikeScanNum: %d, size of fullDataBuffer: %s \n',bufStartScanNum, nextSpikeScanNum, sprintf('%d ',size(fullDataBuffer)));
+%             spikesFoundPerChan(h) = spikesFoundPerChan(h) + 1;
+%             
+%         end
+%         
+%         %Impose refractory period
+%         currIdx = nextSpikeIdx + postSpikeNumScans; %Will start with final scan of the post-spike-window...to use as first scan for next diff operation (first element never selected)
+%     end
+%     t2=toc();
+%    fprintf('%f %d %d %d\n', t2/t1, isequal(newSpikeScanNums{h},david_newSpikeScanNums{h}),isequal(localspikes{h},david_localspikes{h}),isequal(spikesFoundPerChan(h),david_spikesFoundPerChan(h))) 
 end
+%    fprintf('%f %d %d %d\n', t2/t1, isequal(newSpikeScanNums,david_newSpikeScanNums),isequal(localspikes,david_localspikes),isequal(spikesFoundPerChan,david_spikesFoundPerChan)) 
+
 if debug
     % *********************************************************************
     % ****************************** DEBUG ********************************
