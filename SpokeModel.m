@@ -170,9 +170,9 @@ classdef SpokeModel < most.Model
         stimEventCount_; %Struct var containing stimEventCount value for each of the stimEventTypes_
         
         bmarkReadTimeStats = zeros(3,1); %Array of [mean std n]
-        bmarkPreProcessTimeStats = zeros(3,1);; %Array of [mean std n]
-        bmarkPlotTimeStats = zeros(3,1);; %Array of [mean std n]
-        bmarkPostProcessTimeStats = zeros(3,1);; %Array of [mean std n]
+        bmarkPreProcessTimeStats = zeros(3,1); %Array of [mean std n]
+        bmarkPlotTimeStats = zeros(3,1); %Array of [mean std n]
+        bmarkPostProcessTimeStats = zeros(3,1); %Array of [mean std n]
         
         %waveformWrap/partialWaveformBuffer props handle edge-cases in stim-triggered waveform mode. they could potentially be used for spike-triggered waveform mode.
         waveformWrap = []; %waveform detected towards end of timer processing period; specifies number of samples in the next processing period needed to complete the waveform
@@ -241,13 +241,22 @@ classdef SpokeModel < most.Model
     %% CONSTRUCTOR/DESTRUCTOR
     methods
         
-        function obj = SpokeModel(sglIPAddress)
+        function obj = SpokeModel(~)
             
             %Process inputs
-            obj.sglIPAddress = sglIPAddress;
-            obj.hSGL = SpikeGL(sglIPAddress);
+            %obj.sglIPAddress = sglIPAddress;
+            %obj.hSGL = SpikeGL(sglIPAddress);
             
-            obj.sglParamCache = GetParams(obj.hSGL); %initialize SpikeGL param cache
+            %obj.sglParamCache = GetParams(obj.hSGL); %initialize SpikeGL param cache
+            obj.sglParamCache.niEnabled = true;
+            obj.sglParamCache.niMNGain = 200;
+            obj.sglParamCache.niMAGain = 200;
+            obj.sglParamCache.niAiRangeMax = 5;
+            obj.sglParamCache.niMNChans1 = 0:1;
+            obj.sglParamCache.niMAChans1 = 6:7;
+            obj.sglParamCache.niXAChans1 = [];
+            obj.sglParamCache.niXDChans1 = [];
+            obj.sglParamCache.snsNiChanMapFile = '';
 
             %Create class-data file
             s.lastConfigFileName = '';
@@ -640,7 +649,7 @@ classdef SpokeModel < most.Model
         function set.verticalRange(obj,val)
             obj.validatePropArg('verticalRange',val);
             
-            if strcmpi(obj.waveformAmpUnits,'volts');
+            if strcmpi(obj.waveformAmpUnits,'volts')
                 aiRangeMax = obj.sglParamCache.niAiRangeMax;
                 if any(abs(val) > 1.1 * aiRangeMax)
                     warning('Specified range exceeded input channel voltage range by greater than 10% -- spike amplitude axis limits clamped');
