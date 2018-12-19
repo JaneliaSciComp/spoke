@@ -2871,9 +2871,9 @@ for h=1:numChans
     spikesFound = length(validSpikeIdx);
     spikeScanNums = bufStartScanNum + validSpikeIdx - 1;
     newSpikes = ~ismember(spikeScanNums,recentSpikeScanNums);
-    david_newSpikeScanNums{h} = [david_newSpikeScanNums{h} , spikeScanNums( newSpikes )];
-    david_localspikes{h} = [david_localspikes{h} , validSpikeIdx( newSpikes )];
-    david_spikesFoundPerChan(h) = sum(newSpikes);
+    newSpikeScanNums{h} = [newSpikeScanNums{h} , spikeScanNums( newSpikes )];
+    localspikes{h} = [localspikes{h} , validSpikeIdx( newSpikes )];
+    spikesFoundPerChan(h) = sum(newSpikes);
     t1=toc();
     
 %    tic;
