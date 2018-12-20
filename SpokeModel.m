@@ -2349,17 +2349,19 @@ classdef SpokeModel < most.Model
                 if ~isempty(obj.waveformWrap)
                     j=0; % used only to pass assert in nested function below. J=0 in this case because we are referring to a previous waveform (as a product of a previously detected stimulus or spike)
                     znstPlotWaveform(obj.partialWaveformBuffer{1,i}); %plot oldest partial waveform stored
-                else                    
-                    
-                    for j=1:numNewWaveforms                                                
-                        %Clear past waveforms, as needed
-                        %PERF: small optimization, can pre-compute outside of loop if/when clear(s) is needed rather than checking here each time
+                else
+                    %PERF: small optimization, pre-computing outside of loop if/when clear(s) is needed rather than checking in loop
+                    numWaveformsToPlot = obj.waveformsPerPlot - obj.lastPlottedWaveformCountSinceClear(i);
+                    if numWaveformsToPlot == 0
+                        numWaveformsToPlot = obj.waveformsPerPlot;
                         if isequal(obj.waveformsPerPlotClearMode,'all')
-                            if obj.lastPlottedWaveformCountSinceClear(i) + 1 > obj.waveformsPerPlot
-                                obj.hWaveforms(plotIdx).clearpoints();
-                                obj.lastPlottedWaveformCountSinceClear(i) = 0;
-                            end
-                        end                           
+                            obj.hWaveforms(plotIdx).clearpoints();
+                            obj.lastPlottedWaveformCountSinceClear(i) = 0;
+                        end  
+                    end                   
+                    startingWaveformIdx = max(1,numNewWaveforms - numWaveformsToPlot + 1);                         
+                    for j=startingWaveformIdx:numNewWaveforms                                                
+                        %Clear past waveforms, as needed
                         znstPlotWaveform(obj.reducedData{i}.waveforms{j});                                       
                     end
                 end                
@@ -2399,7 +2401,6 @@ classdef SpokeModel < most.Model
                 obj.hWaveforms(plotIdx).addpoints(vertcat(xData, NaN),vertcat(waveform, NaN)); % old
                 obj.lastPlottedWaveformCountSinceClear(i) = obj.lastPlottedWaveformCountSinceClear(i) + 1;
             end
-            
         end
         
         function zprvSetAxesProps(obj,hAx)
