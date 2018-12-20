@@ -1661,12 +1661,12 @@ classdef SpokeModel < most.Model
                 obj.bmarkPostProcessTimeStats(1) = mu;
                 obj.bmarkPostProcessTimeStats(2) = std;
                 obj.bmarkPostProcessTimeStats(3) = obj.bmarkPostProcessTimeStats(3) + 1;               
-                               fprintf('Total Time (%d scans/%d chans): %g -- Read: <%g, %g, %g> Plot: <%g, %g, %g> PreProc: <%g, %g, %g> PostProc: <%g, %g, %g> (Format: <last, mean, std>)\n', ...
-                                   scansToRead,size(newData,2),1000*t8,...
-                                   readTime,obj.bmarkReadTimeStats(1),obj.bmarkReadTimeStats(2),...
-                                   plotTime,obj.bmarkPlotTimeStats(1),obj.bmarkPlotTimeStats(2),...
-                                   procTimePre,obj.bmarkPreProcessTimeStats(1),obj.bmarkPreProcessTimeStats(2),...
-                                   procTimePost,obj.bmarkPostProcessTimeStats(1),obj.bmarkPostProcessTimeStats(2));
+%                 fprintf('Total Time (%d scans/%d chans): %g -- Read: <%g, %g, %g> Plot: <%g, %g, %g> PreProc: <%g, %g, %g> PostProc: <%g, %g, %g> (Format: <last, mean, std>)\n', ...
+%                     scansToRead,size(newData,2),1000*t8,...
+%                     readTime,obj.bmarkReadTimeStats(1),obj.bmarkReadTimeStats(2),...
+%                     plotTime,obj.bmarkPlotTimeStats(1),obj.bmarkPlotTimeStats(2),...
+%                     procTimePre,obj.bmarkPreProcessTimeStats(1),obj.bmarkPreProcessTimeStats(2),...
+%                     procTimePost,obj.bmarkPostProcessTimeStats(1),obj.bmarkPostProcessTimeStats(2));
                 
             catch ME %Handle Timer CB errors
                 most.idioms.reportError(ME);
@@ -2351,15 +2351,19 @@ classdef SpokeModel < most.Model
                     znstPlotWaveform(obj.partialWaveformBuffer{1,i}); %plot oldest partial waveform stored
                 else
                     %PERF: small optimization, pre-computing outside of loop if/when clear(s) is needed rather than checking in loop
-                    numWaveformsToPlot = obj.waveformsPerPlot - obj.lastPlottedWaveformCountSinceClear(i);
-                    if numWaveformsToPlot == 0
-                        numWaveformsToPlot = obj.waveformsPerPlot;
-                        if isequal(obj.waveformsPerPlotClearMode,'all')
+                    % maxNumWaveformsToPlot is the maximum number of new waveforms that should be plotted, limited only by the number of waveforms available
+                    % In waveformsPerPlotClearMode='all' mode, want to clear the plot completely once waveformsPerPlot is reached. For 'oldest' mode, always plot up to waveformsPerPlot, since the oldest ones will be cleared automatically.
+                    if isequal(obj.waveformsPerPlotClearMode,'all')
+                        maxNumWaveformsToPlot = obj.waveformsPerPlot - obj.lastPlottedWaveformCountSinceClear(i);
+                        if maxNumWaveformsToPlot == 0
+                            maxNumWaveformsToPlot = obj.waveformsPerPlot;
                             obj.hWaveforms(plotIdx).clearpoints();
                             obj.lastPlottedWaveformCountSinceClear(i) = 0;
-                        end  
-                    end                   
-                    startingWaveformIdx = max(1,numNewWaveforms - numWaveformsToPlot + 1);                         
+                        end
+                    elseif isequal(obj.waveformsPerPlotClearMode,'oldest')
+                        maxNumWaveformsToPlot = obj.waveformsPerPlot;
+                    end
+                    startingWaveformIdx = max([1,numNewWaveforms - maxNumWaveformsToPlot + 1]);
                     for j=startingWaveformIdx:numNewWaveforms                                                
                         %Clear past waveforms, as needed
                         znstPlotWaveform(obj.reducedData{i}.waveforms{j});                                       
