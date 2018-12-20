@@ -2364,8 +2364,7 @@ classdef SpokeModel < most.Model
                         %Clear past waveforms, as needed
                         znstPlotWaveform(obj.reducedData{i}.waveforms{j});                                       
                     end
-                end                
-                
+                end                                
             end
             
             
