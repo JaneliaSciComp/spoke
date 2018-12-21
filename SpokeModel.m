@@ -2351,19 +2351,28 @@ classdef SpokeModel < most.Model
                     znstPlotWaveform(obj.partialWaveformBuffer{1,i}); %plot oldest partial waveform stored
                 else
                     %PERF: small optimization, pre-computing outside of loop if/when clear(s) is needed rather than checking in loop
-                    % maxNumWaveformsToPlot is the maximum number of new waveforms that should be plotted, limited only by the number of waveforms available
-                    % In waveformsPerPlotClearMode='all' mode, want to clear the plot completely once waveformsPerPlot is reached. For 'oldest' mode, always plot up to waveformsPerPlot, since the oldest ones will be cleared automatically.
+                    %numWaveformsLeftToPlot is the number of waveforms needed to hit obj.waveformsPerPlot
+                    %numWaveformsToPlotNow is the number of waveforms to actually plot, after hypothetical clearing assuming all waveforms have been plotted
                     if isequal(obj.waveformsPerPlotClearMode,'all')
-                        maxNumWaveformsToPlot = obj.waveformsPerPlot - obj.lastPlottedWaveformCountSinceClear(i);
-                        if maxNumWaveformsToPlot == 0
-                            maxNumWaveformsToPlot = obj.waveformsPerPlot;
+                        numWaveformsLeftToPlot = obj.waveformsPerPlot - obj.lastPlottedWaveformCountSinceClear(i);
+                        if numWaveformsLeftToPlot >= numNewWaveforms 
+                            %Can plot all the new waveforms without having to clear
+                            numWaveformsToPlotNow = numNewWaveforms;
+                        else
+                            % numNewWaveforms is greater than numWaveformsLeftToPlot, so must clear
+                            % Use rem() to calculate how many will be plotted after last hypothetical clear:
+                            numWaveformsToPlotNow = rem(numNewWaveforms - numWaveformsLeftToPlot, obj.waveformsPerPlot); 
+                            if numNewWaveformsToPlotNow == 0, numNewWaveformsToPlotNow = obj.waveformsPerPlot; end
+                            
+                            % Clear plot and reset count:
                             obj.hWaveforms(plotIdx).clearpoints();
                             obj.lastPlottedWaveformCountSinceClear(i) = 0;
                         end
                     elseif isequal(obj.waveformsPerPlotClearMode,'oldest')
-                        maxNumWaveformsToPlot = obj.waveformsPerPlot;
+                        numWaveformsToPlotNow = min([obj.waveformsPerPlot, numNewWaveforms]); %Always want to plot up to obj.waveformsPerPlot waveforms
                     end
-                    startingWaveformIdx = max([1,numNewWaveforms - maxNumWaveformsToPlot + 1]);
+                    
+                    startingWaveformIdx = numNewWaveforms - numWaveformsToPlotNow + 1;
                     for j=startingWaveformIdx:numNewWaveforms                                                
                         %Clear past waveforms, as needed
                         znstPlotWaveform(obj.reducedData{i}.waveforms{j});                                       
