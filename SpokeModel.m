@@ -2856,6 +2856,7 @@ for h=1:numChans
     currIdx = 1;
     %currIdx = abs(horizontalRangeScans(1)); %DEPRECATED. Removed spike detection dependence on horizontalRange; no known justification for this dependence at this time
     tic;
+    %Find the indices of all spikes when they cross the thresholds
     if thresholdAbsolute %Find crossings above or below absolute threshold level
         diffArray = diff(abs(fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) > abs(thresholdVal(h))); %should this be same logic as below?
     else
@@ -2865,26 +2866,30 @@ for h=1:numChans
             diffArray = diff((fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) < thresholdVal(h));
         end
     end
-    crossingThresholdIdx = find(diffArray == 1)' + 1; %Add one because diff results starts at second index    
+    crossingThresholdIdx = find(diffArray == 1)' + 1; %Add one because diff results starts at second index
+    
+    %crossingThresholdIdx contains all spikes, but only want it to contain spikes if they are separated by postSpikeNumScans
+    %Seems faster to keep a separate array of which ones to keep rather than deleting as we go
     tic;
     idxToKeep = false(size(crossingThresholdIdx));
-    idxToKeep(1)=1;
+    idxToKeep(1) = true; %The first spike is kept
     i=1;
     while i<=numel(crossingThresholdIdx)
         i=find(crossingThresholdIdx>crossingThresholdIdx(i)+postSpikeNumScans,1);
         idxToKeep(i)=true;
     end
-    crossingThresholdIdx = crossingThresholdIdx(idxToKeep);
+    validSpikeIdx = crossingThresholdIdx(idxToKeep);%validSpikeIdx contains only spikes separated by postSpikeNumScans
     
-    validSpikeIdx = crossingThresholdIdx;%([1, find(scansBetweenCrossings>postSpikeNumScans) + 1]); %Make sure to include the first crossing
+    %Ensure maxNumSpikes isn't exceeded
     if length(validSpikeIdx) > maxNumSpikes
         maxNumWaveformsApplied = true;
         validSpikeIdx = validSpikeIdx(1:maxNumSpikes);       
     end
-    spikesFound = length(validSpikeIdx);
-    spikeScanNums = bufStartScanNum + validSpikeIdx - 1;
-    newSpikes = ~ismember(spikeScanNums,recentSpikeScanNums);
-    newSpikeScanNums{h} = [newSpikeScanNums{h} , spikeScanNums( newSpikes )];
+    
+    spikesFound = length(validSpikeIdx); %Unused I think
+    spikeScanNums = bufStartScanNum + validSpikeIdx - 1; %Scan numbers corresponding to the spikes
+    newSpikes = ~ismember(spikeScanNums ,recentSpikeScanNums); %Only keep the new spikes
+    newSpikeScanNums{h} = [newSpikeScanNums{h} , spikeScanNums( newSpikes )]; 
     localspikes{h} = [localspikes{h} , validSpikeIdx( newSpikes )];
     spikesFoundPerChan(h) = sum(newSpikes);
     t1=toc();
