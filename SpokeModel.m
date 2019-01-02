@@ -42,7 +42,7 @@ classdef SpokeModel < most.Model
         verticalRangeRasterInfIncrement = 20; %When verticalRangeRaster(2)=Inf, specify the increment in which the number of stimuli displayed are incremented by.
         stimEventTypesDisplayed = {}; %String or string cell array indicating which event type(s) to display raster/PSTH data for.
         
-        spikeRefractoryPeriod = 2e-3; %Time, in seconds, to prevent detection of spike following previously detected spike. When displayMode='waveform', this value is given by second element of horizontalRange.
+        spikeRefractoryPeriod = 2e-3; %Time, in seconds, to prevent detection of spike following previously detected spike. When displayMode='waveform', this value is determined by second element of horizontalRange.
         
         psthTimeBin = 10e-3; %Time, in seconds, over which to bin spikes for PSTH summary plot
         psthAmpRange = [0 120]; %Amplitude range to display, in units of spikes/second
@@ -242,6 +242,7 @@ classdef SpokeModel < most.Model
         
         IMEC_AP_GAIN_DEFAULT = 500;
         IMEC_LFP_GAIN_DEFAULT = 250;
+        SPIKE_REFRACTORY_PERIOD_MIN = 1e-3; %Minimum spike refractory period, i.e. fastest spike detection rate to allow. 
     end
     
     %% CONSTRUCTOR/DESTRUCTOR
@@ -676,12 +677,19 @@ classdef SpokeModel < most.Model
             obj.zprpAssertNotRunning('horizontalRange');
             obj.validatePropArg('horizontalRange',val);
             
+            %Ensure range includes both negative & positive times. In principle other use cases could be supported, but they would affect other logic and haven't been requested.
+            assert(val(1)<0 && val(2)>0, 'Horizontal range should span from a pre-event (negative) to a post-event (positive) time value');
+            
             %Ensure value does not exceed processing refresh period
             dval = diff(val);
             f_samp = obj.sglParamCache.xxxSampRate;
             assert(dval > 0,'Horizontal range must be specified from minimum to maximum');
             assert(ceil(dval * f_samp) < floor(f_samp/obj.refreshRate),'horizontalRange must be shorter than the processing refresh period');
             
+            %Ensure positive range corresponds to at least the minimum spike refractory period
+            %Nit: Technically this isn't needed for stim-triggered waveform mode (i.e. no spike detection), but let's apply the same rule since there's no known use case for a smaller range in this mode
+            assert(val(2) > obj.SPIKE_REFRACTORY_PERIOD_MIN, 'Horizontal range post-event time must exceed the minimum spike refractory period time (%d)', obj.SPIKE_REFRACTORY_PERIOD_MIN);
+                        
             obj.horizontalRange = val;
             
             %Side-effects
@@ -737,7 +745,12 @@ classdef SpokeModel < most.Model
                         fprintf(2,'WARNING: When displayMode = ''waveform'', the ''spikeRefractoryPeriod'' cannot be directly set. Value specified ignored.\n')
                     end
                 case 'raster'
-                    obj.spikeRefractoryPeriod = val;
+                    if val < obj.SPIKE_REFRACTORY_PERIOD_MIN
+                        warning('Spike refractory period must be at least %d, to limit excessive spike detection & processing time. Set value to %d.',obj.SPIKE_REFRACTORY_PERIOD_MIN,obj.SPIKE_REFRACTORY_PERIOD_MIN);
+                        obj.spikeRefractoryPeriod = obj.SPIKE_REFRACTORY_PERIOD_MIN;
+                    else
+                        obj.spikeRefractoryPeriod = val;
+                    end
             end
         end
         
@@ -2349,21 +2362,35 @@ classdef SpokeModel < most.Model
                 if ~isempty(obj.waveformWrap)
                     j=0; % used only to pass assert in nested function below. J=0 in this case because we are referring to a previous waveform (as a product of a previously detected stimulus or spike)
                     znstPlotWaveform(obj.partialWaveformBuffer{1,i}); %plot oldest partial waveform stored
-                else                    
+                else
+                    %PERF: small optimization, pre-computing outside of loop if/when clear(s) is needed rather than checking in loop
+                    %numWaveformsLeftToPlot is the number of waveforms needed to hit obj.waveformsPerPlot
+                    %numWaveformsToPlotNow is the number of waveforms to actually plot, after hypothetical clearing assuming all waveforms have been plotted
+                    if isequal(obj.waveformsPerPlotClearMode,'all')
+                        numWaveformsLeftToPlot = obj.waveformsPerPlot - obj.lastPlottedWaveformCountSinceClear(i);
+                        if numWaveformsLeftToPlot >= numNewWaveforms 
+                            %Can plot all the new waveforms without having to clear
+                            numWaveformsToPlotNow = numNewWaveforms;
+                        else
+                            % numNewWaveforms is greater than numWaveformsLeftToPlot, so must clear
+                            % Use rem() to calculate how many will be plotted after last hypothetical clear:
+                            numWaveformsToPlotNow = rem(numNewWaveforms - numWaveformsLeftToPlot, obj.waveformsPerPlot); 
+                            if numWaveformsToPlotNow == 0, numWaveformsToPlotNow = obj.waveformsPerPlot; end
+                            
+                            % Clear plot and reset count:
+                            obj.hWaveforms(plotIdx).clearpoints();
+                            obj.lastPlottedWaveformCountSinceClear(i) = 0;
+                        end
+                    elseif isequal(obj.waveformsPerPlotClearMode,'oldest')
+                        numWaveformsToPlotNow = min([obj.waveformsPerPlot, numNewWaveforms]); %Always want to plot up to obj.waveformsPerPlot waveforms
+                    end
                     
-                    for j=1:numNewWaveforms                                                
+                    startingWaveformIdx = numNewWaveforms - numWaveformsToPlotNow + 1;
+                    for j=startingWaveformIdx:numNewWaveforms                                                
                         %Clear past waveforms, as needed
-                        %PERF: small optimization, can pre-compute outside of loop if/when clear(s) is needed rather than checking here each time
-                        if isequal(obj.waveformsPerPlotClearMode,'all')
-                            if obj.lastPlottedWaveformCountSinceClear(i) + 1 > obj.waveformsPerPlot
-                                obj.hWaveforms(plotIdx).clearpoints();
-                                obj.lastPlottedWaveformCountSinceClear(i) = 0;
-                            end
-                        end                           
                         znstPlotWaveform(obj.reducedData{i}.waveforms{j});                                       
                     end
-                end                
-                
+                end                                
             end
             
             
@@ -2399,7 +2426,6 @@ classdef SpokeModel < most.Model
                 obj.hWaveforms(plotIdx).addpoints(vertcat(xData, NaN),vertcat(waveform, NaN)); % old
                 obj.lastPlottedWaveformCountSinceClear(i) = obj.lastPlottedWaveformCountSinceClear(i) + 1;
             end
-            
         end
         
         function zprvSetAxesProps(obj,hAx)
@@ -2853,6 +2879,11 @@ end
 
 localspikes = cell(numChans,1);
 
+david_newSpikeScanNums = cell(numChans,1);
+david_spikesFoundPerChan = zeros(numChans,1);
+david_localspikes = cell(numChans,1);
+
+
 for h=1:numChans
     
     %Determine recent (already detected) spike scan numbers to exclude from spike search
@@ -2869,58 +2900,100 @@ for h=1:numChans
     
     currIdx = 1;
     %currIdx = abs(horizontalRangeScans(1)); %DEPRECATED. Removed spike detection dependence on horizontalRange; no known justification for this dependence at this time
-        
-    while currIdx < scansToSearch
-        %fprintf('currIdx: %d scansToSearch: %d postSpikeNumScans: %d\n',currIdx,scansToSearch,postSpikeNumScans);
-        %Find at most one spike (threshold crossing) in the fullDataBuffer
-        if thresholdAbsolute %Find crossings above or below absolute threshold level
-            nextSpikeIdx = currIdx + find(diff(abs(fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) > abs(thresholdVal(h))) == 1,1);
-        else
-            if thresholdVal >= 0 %Find crossings above threshold level
-                nextSpikeIdx = currIdx + find(diff((fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) > thresholdVal(h)) == 1,1); %Find at most one spike
-            else %Find crossings below threshold level
-                nextSpikeIdx = currIdx + find(diff((fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) < thresholdVal(h)) == 1,1); %Find at most one spike
-            end
+    tic;
+    %Find the indices of all spikes when they cross the thresholds
+    if thresholdAbsolute %Find crossings above or below absolute threshold level
+        diffArray = diff(abs(fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) > abs(thresholdVal(h))); %should this be same logic as below?
+    else
+        if thresholdVal >= 0 %Find crossings above threshold level
+            diffArray = diff((fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) > thresholdVal(h)); 
+        else %Find crossings below threshold level
+            diffArray = diff((fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) < thresholdVal(h));
         end
-        
-        if isempty(nextSpikeIdx) %no spikes found in whole remainder of fullDataBuffer
-            break;
-        else
-            spikesFound = spikesFound + 1;
-            
-            if spikesFound > maxNumSpikes
-                maxNumWaveformsApplied = true;
-                break;
-            end
-        end
-        
-        nextSpikeScanNum = bufStartScanNum + nextSpikeIdx - 1;
-        
-        %Add new spike, if not added already
-        if ~ismember(nextSpikeScanNum,recentSpikeScanNums)
-            %Note: fullDataBuffer is in "local" space. This means that it
-            %is zero referenced to the beginning of the current "block" of
-            %samples.
-            %
-            %bufStartScanNum is in spikeglx's "global space". This means
-            %that a bufStartScanNum of 0 is the very beginning of the
-            %spikeglx acquisition.
-            %
-            %This is why nextSpikeScanNum adds the nextSpikeIdx to the
-            %bufStartScanNum. Think of bufStartScanNum as being the offset
-            %in "Global Space" that equals zero in the "local space".
-            newSpikeScanNums{h}(end+1) = nextSpikeScanNum;
-            localspikes{h}(end+1) = nextSpikeIdx;
-            %fprintf('bufStartScanNum: %d, nextSpikeScanNum: %d, size of fullDataBuffer: %s \n',bufStartScanNum, nextSpikeScanNum, sprintf('%d ',size(fullDataBuffer)));
-            spikesFoundPerChan(h) = spikesFoundPerChan(h) + 1;
-            
-        end
-        
-        %Impose refractory period
-        currIdx = nextSpikeIdx + postSpikeNumScans; %Will start with final scan of the post-spike-window...to use as first scan for next diff operation (first element never selected)
+    end
+    crossingThresholdIdx = find(diffArray == 1)' + 1; %Add one because diff results starts at second index
+    
+    %crossingThresholdIdx contains all spikes, but only want it to contain spikes if they are separated by postSpikeNumScans
+    %Seems faster to keep a separate array of which ones to keep rather than deleting as we go
+    tic;
+    idxToKeep = false(size(crossingThresholdIdx));
+    idxToKeep(1) = true; %The first spike is kept
+    i=1;
+    while i<=numel(crossingThresholdIdx)
+        i=find(crossingThresholdIdx>crossingThresholdIdx(i)+postSpikeNumScans,1);
+        idxToKeep(i)=true;
+    end
+    validSpikeIdx = crossingThresholdIdx(idxToKeep);%validSpikeIdx contains only spikes separated by postSpikeNumScans
+    
+    %Ensure maxNumSpikes isn't exceeded
+    if length(validSpikeIdx) > maxNumSpikes
+        maxNumWaveformsApplied = true;
+        validSpikeIdx = validSpikeIdx(1:maxNumSpikes);       
     end
     
+    spikesFound = length(validSpikeIdx); %Unused I think
+    spikeScanNums = bufStartScanNum + validSpikeIdx - 1; %Scan numbers corresponding to the spikes
+    newSpikes = ~ismember(spikeScanNums ,recentSpikeScanNums); %Only keep the new spikes
+    newSpikeScanNums{h} = [newSpikeScanNums{h} , spikeScanNums( newSpikes )]; 
+    localspikes{h} = [localspikes{h} , validSpikeIdx( newSpikes )];
+    spikesFoundPerChan(h) = sum(newSpikes);
+    t1=toc();
+    
+%    tic;
+%     while currIdx < scansToSearch
+%         %fprintf('currIdx: %d scansToSearch: %d postSpikeNumScans: %d\n',currIdx,scansToSearch,postSpikeNumScans);
+%         %Find at most one spike (threshold crossing) in the fullDataBuffer
+%         if thresholdAbsolute %Find crossings above or below absolute threshold level
+%             nextSpikeIdx = currIdx + find(diff(abs(fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) > abs(thresholdVal(h))) == 1,1);
+%         else
+%             if thresholdVal >= 0 %Find crossings above threshold level
+%                 nextSpikeIdx = currIdx + find(diff((fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) > thresholdVal(h)) == 1,1); %Find at most one spike
+%             else %Find crossings below threshold level
+%                 nextSpikeIdx = currIdx + find(diff((fullDataBuffer(currIdx:scansToSearch,h) - baselineMean(h)) < thresholdVal(h)) == 1,1); %Find at most one spike
+%             end
+%         end
+%         
+%         if isempty(nextSpikeIdx) %no spikes found in whole remainder of fullDataBuffer
+%             break;
+%         else
+%             spikesFound = spikesFound + 1;
+%             
+%             if spikesFound > maxNumSpikes
+%                 maxNumWaveformsApplied = true;
+%                 break;
+%             end
+%         end
+%         
+%         nextSpikeScanNum = bufStartScanNum + nextSpikeIdx - 1;
+%         
+%         %Add new spike, if not added already
+%         if ~ismember(nextSpikeScanNum,recentSpikeScanNums)
+%             %Note: fullDataBuffer is in "local" space. This means that it
+%             %is zero referenced to the beginning of the current "block" of
+%             %samples.
+%             %
+%             %bufStartScanNum is in spikeglx's "global space". This means
+%             %that a bufStartScanNum of 0 is the very beginning of the
+%             %spikeglx acquisition.
+%             %
+%             %This is why nextSpikeScanNum adds the nextSpikeIdx to the
+%             %bufStartScanNum. Think of bufStartScanNum as being the offset
+%             %in "Global Space" that equals zero in the "local space".
+%             newSpikeScanNums{h}(end+1) = nextSpikeScanNum;
+%             localspikes{h}(end+1) = nextSpikeIdx;
+%             %fprintf('bufStartScanNum: %d, nextSpikeScanNum: %d, size of fullDataBuffer: %s \n',bufStartScanNum, nextSpikeScanNum, sprintf('%d ',size(fullDataBuffer)));
+%             spikesFoundPerChan(h) = spikesFoundPerChan(h) + 1;
+%             
+%         end
+%         
+%         %Impose refractory period
+%         currIdx = nextSpikeIdx + postSpikeNumScans; %Will start with final scan of the post-spike-window...to use as first scan for next diff operation (first element never selected)
+%     end
+%     t2=toc();
+%    fprintf('%f %d %d %d\n', t2/t1, isequal(newSpikeScanNums{h},david_newSpikeScanNums{h}),isequal(localspikes{h},david_localspikes{h}),isequal(spikesFoundPerChan(h),david_spikesFoundPerChan(h))) 
 end
+%    fprintf('%f %d %d %d\n', t2/t1, isequal(newSpikeScanNums,david_newSpikeScanNums),isequal(localspikes,david_localspikes),isequal(spikesFoundPerChan,david_spikesFoundPerChan)) 
+
 if debug
     % *********************************************************************
     % ****************************** DEBUG ********************************
