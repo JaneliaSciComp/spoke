@@ -1,4 +1,4 @@
-function spoke(ipAddress)
+function spoke(varargin)
 % Launcher for Spoke application 
 % See project wiki for user & developer documentation 
 
@@ -8,7 +8,8 @@ opengl('save','software');
 
 % make the spoke main controller object
 
-if nargin == 0
+probeType = 'whisper'; % Default to 'whisper'
+if nargin <= 1
    [~,s] = system('ipconfig /all');
    
    % Check IPv4 address of this machine. Note, this only works on newer machines.
@@ -20,9 +21,15 @@ if nargin == 0
    assert(numel(out) > 0, 'Unable to determine the IP address for this machine');
    ipAddress = out{1}{1};
    sprintf('Detected local IP Address %s. Connecting to the SpikeGL Remote Connection server.',ipAddress);
-end    
+   if nargin == 1
+       probeType = varargin{1};
+   end
+else
+    ipAddress = varargin{1};
+    probeType = varargin{2};
+end
    
-hSpoke = SpokeModel(ipAddress);
+hSpoke = SpokeModel(ipAddress, probeType);
 hSpokeCtl = SpokeController(hSpoke);
 
 assignin('base','hGrid',hSpoke);
