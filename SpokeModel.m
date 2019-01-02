@@ -2362,7 +2362,7 @@ classdef SpokeModel < most.Model
                             % numNewWaveforms is greater than numWaveformsLeftToPlot, so must clear
                             % Use rem() to calculate how many will be plotted after last hypothetical clear:
                             numWaveformsToPlotNow = rem(numNewWaveforms - numWaveformsLeftToPlot, obj.waveformsPerPlot); 
-                            if numNewWaveformsToPlotNow == 0, numNewWaveformsToPlotNow = obj.waveformsPerPlot; end
+                            if numWaveformsToPlotNow == 0, numWaveformsToPlotNow = obj.waveformsPerPlot; end
                             
                             % Clear plot and reset count:
                             obj.hWaveforms(plotIdx).clearpoints();
