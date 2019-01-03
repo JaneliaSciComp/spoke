@@ -1048,7 +1048,12 @@ classdef SpokeModel < most.Model
             %Open SpikeGL connection & updateparameter cache
             obj.hSGL = SpikeGL(obj.sglIPAddress);
             obj.sglParamCache = GetParams(obj.hSGL);
-            
+            niORim = 'ni';
+            if isequal(obj.probeType, 'imec')
+                niORim = 'im';
+            end
+            obj.sglParamCache = zlclGeneralizeSpikeGLXParams(obj.sglParamCache, niORim);
+
             %Initializations
             obj.maxReadableScanNum = 0;
             obj.lastMaxReadableScanNum = 0;
