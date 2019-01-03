@@ -2867,33 +2867,33 @@ for h=1:numChans
         end
     end
     crossingThresholdIdx = find(diffArray == 1)' + 1; %Add one because diff results starts at second index
-    
-    %crossingThresholdIdx contains all spikes, but only want it to contain spikes if they are separated by postSpikeNumScans
-    %Seems faster to keep a separate array of which ones to keep rather than deleting as we go
-    tic;
-    idxToKeep = false(size(crossingThresholdIdx));
-    idxToKeep(1) = true; %The first spike is kept
-    i=1;
-    while i<=numel(crossingThresholdIdx)
-        i=find(crossingThresholdIdx>crossingThresholdIdx(i)+postSpikeNumScans,1);
-        idxToKeep(i)=true;
+    if numel(crossingThresholdIdx) > 0
+        %crossingThresholdIdx contains all spikes, but only want it to contain spikes if they are separated by postSpikeNumScans
+        %Seems faster to keep a separate array of which ones to keep rather than deleting as we go
+        tic;
+        idxToKeep = false(size(crossingThresholdIdx));
+        idxToKeep(1) = true; %The first spike is kept
+        i=1;
+        while i<=numel(crossingThresholdIdx)
+            i=find(crossingThresholdIdx>crossingThresholdIdx(i)+postSpikeNumScans,1);
+            idxToKeep(i)=true;
+        end
+        validSpikeIdx = crossingThresholdIdx(idxToKeep);%validSpikeIdx contains only spikes separated by postSpikeNumScans
+        
+        %Ensure maxNumSpikes isn't exceeded
+        if length(validSpikeIdx) > maxNumSpikes
+            maxNumWaveformsApplied = true;
+            validSpikeIdx = validSpikeIdx(1:maxNumSpikes);
+        end
+        
+        spikesFound = length(validSpikeIdx); %Unused I think
+        spikeScanNums = bufStartScanNum + validSpikeIdx - 1; %Scan numbers corresponding to the spikes
+        newSpikes = ~ismember(spikeScanNums ,recentSpikeScanNums); %Only keep the new spikes
+        newSpikeScanNums{h} = [newSpikeScanNums{h} , spikeScanNums( newSpikes )];
+        localspikes{h} = [localspikes{h} , validSpikeIdx( newSpikes )];
+        spikesFoundPerChan(h) = sum(newSpikes);
+        t1=toc();
     end
-    validSpikeIdx = crossingThresholdIdx(idxToKeep);%validSpikeIdx contains only spikes separated by postSpikeNumScans
-    
-    %Ensure maxNumSpikes isn't exceeded
-    if length(validSpikeIdx) > maxNumSpikes
-        maxNumWaveformsApplied = true;
-        validSpikeIdx = validSpikeIdx(1:maxNumSpikes);       
-    end
-    
-    spikesFound = length(validSpikeIdx); %Unused I think
-    spikeScanNums = bufStartScanNum + validSpikeIdx - 1; %Scan numbers corresponding to the spikes
-    newSpikes = ~ismember(spikeScanNums ,recentSpikeScanNums); %Only keep the new spikes
-    newSpikeScanNums{h} = [newSpikeScanNums{h} , spikeScanNums( newSpikes )]; 
-    localspikes{h} = [localspikes{h} , validSpikeIdx( newSpikes )];
-    spikesFoundPerChan(h) = sum(newSpikes);
-    t1=toc();
-    
 %    tic;
 %     while currIdx < scansToSearch
 %         %fprintf('currIdx: %d scansToSearch: %d postSpikeNumScans: %d\n',currIdx,scansToSearch,postSpikeNumScans);
