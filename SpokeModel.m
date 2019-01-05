@@ -269,10 +269,6 @@ classdef SpokeModel < most.Model
                 case 'whisper'
                     niORim = 'Ni';
                     assert(isequal(obj.sglParamCache.niEnabled,'true'),'Failed to detect NI device for Whisper probe');
-                    
-                    
-                    neuralChanGain = obj.sglParamCache.niMNGain;
-                    auxChanGain = obj.sglParamCache.niMAGain;
                 case 'imec'
                     niORim = 'Im';
                     assert(isequal(obj.sglParamCache.imEnabled,'true'),'Failed to detect Imec device');
