@@ -2410,10 +2410,15 @@ classdef SpokeModel < most.Model
                 %Scale waveform from A/D units to target units.
                 switch obj.waveformAmpUnits
                     case 'volts' %apply voltage scaling
-                        if strcmpi(obj.thresholdType,'volts') || stimulusTriggeredWaveformMode
-                            waveform = double(waveform) * obj.voltsPerBitNeural;
+                        if isequal(obj.probeType, 'imec')
+                            channelVoltsPerBitNeural = obj.voltsPerBitNeural(i);
                         else
-                            waveform = (double(waveform) - obj.baselineMean(i)) * obj.voltsPerBitNeural; %TODO: verify this mean subtraction is correct for this use case (RMS threshold type, voltage display units, spike-triggered waveform mode), if it arises; it seems to be driven by some practical reality rather than a theoretical necessity
+                            channelVoltsPerBitNeural = obj.voltsPerBitNeural;
+                        end
+                        if strcmpi(obj.thresholdType,'volts') || stimulusTriggeredWaveformMode
+                            waveform = double(waveform) * channelVoltsPerBitNeural;
+                        else
+                            waveform = (double(waveform) - obj.baselineMean(i)) * channelVoltsPerBitNeural; %TODO: verify this mean subtraction is correct for this use case (RMS threshold type, voltage display units, spike-triggered waveform mode), if it arises; it seems to be driven by some practical reality rather than a theoretical necessity
                         end
                     case 'rmsMultiple' %apply per-channel RMS scaling
                         % For rmsMultiple display units, mean-subtraction is always applied (via filter or directly here)
@@ -2496,7 +2501,11 @@ classdef SpokeModel < most.Model
                     plotIdx = mod(i-1,obj.PLOTS_PER_TAB) + 1;
                     
                     if perChanThreshold
-                        threshold = obj.thresholdVal * obj.baselineRMS(i) * obj.voltsPerBitNeural;
+                        if isequal(obj.probeType, 'imec')
+                            threshold = obj.thresholdVal * obj.baselineRMS(i) * obj.voltsPerBitNeural(i);
+                        else
+                            threshold = obj.thresholdVal * obj.baselineRMS(i) * obj.voltsPerBitNeural;
+                        end
                     end
                     
                     if ~isempty(threshold)
@@ -2508,7 +2517,6 @@ classdef SpokeModel < most.Model
                         
                         if numel(obj.hThresholdLines{1}) < plotIdx || ~isgraphics(obj.hThresholdLines{1}(plotIdx))
                             obj.hThresholdLines{1}(plotIdx) = line('Parent',obj.hPlots(plotIdx),'Color','r',dataArgs{:}); %'EraseMode','none',
-                            
                             if obj.thresholdAbsolute
                                 obj.hThresholdLines{2}(plotIdx) = line('Parent',obj.hPlots(plotIdx),'Color','r',dataArgs2{:}); %'EraseMode','none',
                             end
