@@ -1,8 +1,0 @@
-title: Spoke
-description: Live display of neural spike data for SpikeGLX software
-google_analytics: 
-show_downloads: true
-theme: jekyll-theme-slate
-
-gems:
-  - jekyll-mentions
