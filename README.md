@@ -57,6 +57,6 @@ Spoke seeks to be as memoryless as possible. In other words, raw data is discard
 
 ## Credits
 * David Ackerman
-* Vijay Iyer (Including initial jmplementation pre-Github)
+* Vijay Iyer (Including initial implementation pre-Github)
 * Edward Kang
 * Bill Karsh (MATLAB interface to SpikeGLX)
