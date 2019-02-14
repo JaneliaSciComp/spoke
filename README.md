@@ -10,7 +10,7 @@ The active version is [v0.9-beta](https://github.com/JaneliaSciComp/spoke/releas
 
 * Windows 64-bit operating system (7, 8.1, 10)
 * SpikeGLX Software (most recent phase3A [release](http://billkarsh.github.io/SpikeGLX)).
-* [MATLAB](https://www.mathworks.com/downloads), R2015b or later
+* [MATLAB](https://www.mathworks.com/downloads) (R2015b or later)
 * MATLAB [Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
 
 ## Launching Spoke
