@@ -17,17 +17,16 @@ Software:
 Hardware (coming soon):
 
 ## Launching Spoke
-numbers vs bullets? Prefer numbers
 1. Launch SpikeGLX  
 2. Establish connection between Spoke to SpikeGLX  
-  a. Open SpikeGLX dialog 'Options/Command Server Settings...'.  
-  b. Click 'Enable Remote Command Server' and then click 'My Address'.  
-  c. (If Spoke is on separate machine) Write down the IP address; you'll need to type that into the MATLAB client code.  
+  A. Open SpikeGLX dialog 'Options/Command Server Settings...'.  
+  B. Click 'Enable Remote Command Server' and then click 'My Address'.  
+  C. (If Spoke is on separate machine) Write down the IP address; you'll need to type that into the MATLAB client code.  
 3. Launch MATLAB  
-  a. If not done already, [add root folder and subfolders to MATLAB path](https://www.mathworks.com/help/matlab/matlab_env/add-remove-or-reorder-folders-on-the-search-path.html)  
+  A. If not done already, [add root folder and subfolders to MATLAB path](https://www.mathworks.com/help/matlab/matlab_env/add-remove-or-reorder-folders-on-the-search-path.html)  
 4. Launch Spoke  
-  a. If Spoke is on same machine; enter "spoke" on the MATLAB command line  
-  b. If Spoke is on separate machine; enter "spoke('\<SpikeGLX IP address\>')" on the MATLAB command line  
+  B. If Spoke is on same machine; enter "spoke" on the MATLAB command line  
+  C. If Spoke is on separate machine; enter "spoke('\<SpikeGLX IP address\>')" on the MATLAB command line  
 
 ## Running Spoke
 Spoke currently has three modes of selective data display:  
