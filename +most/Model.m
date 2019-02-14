@@ -51,7 +51,9 @@ classdef Model < most.DClass
     methods
         
         function obj = Model()
-           
+            
+            obj = obj@most.DClass(); %Added for compatability with R2016b changes to object construction
+            
             znstProcessPropAttributes(); %Process property attributes            
            
             function znstProcessPropAttributes()
