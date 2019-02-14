@@ -14,7 +14,7 @@ Software:
 * MATLAB R2015b or later (https://www.mathworks.com/downloads/)
 * MATLAB Signal Processing Toolbox (https://www.mathworks.com/products/signal.html)
 
-Hardware:
+Hardware (coming soon):
 
 ## Launching Spoke
 numbers vs bullets? Prefer numbers
