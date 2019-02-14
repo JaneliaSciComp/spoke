@@ -1,20 +1,19 @@
 # Spoke
 =========
 
-Spoke is a MATLAB app for live display of neural 
-data from high-channel-count recording systems. It offers multiple experimenter-optimized display modes based on data reduction of high-channel-count data streams. It is designed around the Whisper extracellular recording system developed at HHMI/Janelia Research Campus in the [APIG lab of Tim Harris](https://www.janelia.org/lab/harris-lab-apig) and its accompanying [SpikeGLX] (https://github.com/billkarsh/SpikeGLX) neural recording software.
+Spoke is a MATLAB app for live selective display of neural data from high-channel-count recording systems. It offers multiple experimenter-optimized display modes based on data reduction of high-channel-count data streams. It currently supports the Whisper extracellular recording system developed byt he [Harris Lab](https://www.janelia.org/lab/harris-lab) at HHMI/Janelia Research Campus. Future support is planned for the Neuropixels recording system. 
 
-Spoke is developed & maintained by Scientific Computing under the auspices of the APIG Lab at HHMI/Janelia Research Campus.
+Spoke is developed & maintained by the Scientific Computing team at HHMI/Janelia, under the auspices of the Harris Lab. 
+
+## Release Information
+The active version is 0.9-Beta. Developers are actively seeking lead users. Active users of Whisper probes interested in using Spoke are encouraged to contact [David Ackerman](mailto:ackermand@janelia.hhmi.org). Lead user requirements will be actively considered for the planned 1.0 release.
 
 ## System Requirements
 
-Software:
 * Windows: 7, 8.1, 10.
 * SpikeGLX Software ([get it here](http://billkarsh.github.io/SpikeGLX)).
 * MATLAB R2015b or later (https://www.mathworks.com/downloads/)
 * MATLAB Signal Processing Toolbox (https://www.mathworks.com/products/signal.html)
-
-Hardware (coming soon):
 
 ## Launching Spoke
 1. Launch SpikeGLX  
@@ -25,8 +24,8 @@ Hardware (coming soon):
 3. Launch MATLAB  
   A. If not done already, [add root folder and subfolders to MATLAB path](https://www.mathworks.com/help/matlab/matlab_env/add-remove-or-reorder-folders-on-the-search-path.html)  
 4. Launch Spoke  
-  B. If Spoke is on same machine; enter "spoke" on the MATLAB command line  
-  C. If Spoke is on separate machine; enter "spoke('\<SpikeGLX IP address\>')" on the MATLAB command line  
+  B. If Spoke is on same machine; enter ```spoke``` on the MATLAB command line  
+  C. If Spoke is on separate machine; enter ```spoke('XXX.XXX.X.XXX')``` on the MATLAB command line  
 
 ## Running Spoke
 Spoke currently has three modes of selective data display:  
@@ -46,7 +45,7 @@ To configure each of these modes:
 
 Configure additional display settings according to the public properties described in the Spoke Model documentation. All of these are available from the Spoke control window.
 
-Press start to begin streaming selective display. Display continues until stopped and can be restarted at any time.
+Press Start to begin streaming selective display. Display continues until stopped and can be restarted at any time.
 
 ## About the Implementation
 Spoke is a consumer of the SpikeGLX data production software for Whisper neural recordings systems. Spoke retrieves data from SpikeGLX via its remote command interface over TCP/IP. 
@@ -57,8 +56,5 @@ See [Processing Pipeline](https://github.com/JaneliaSciComp/spoke/wiki/Processin
 
 Spoke seeks to be as memoryless as possible. In other words, raw data is discarded as soon as it is no longer needed, i.e. not a part of the reduced data structure or needed for processing in a subsequent timer period. 
 
-## Credits
-* David Ackerman
-* Vijay Iyer (Including initial implementation pre-Github)
-* Edward Kang
-* Bill Karsh (MATLAB interface to SpikeGLX)
+## Acknowledgements
+We acknowledge the following important contributions beyond the GitHub records. Vijay Iyer developed the initial "alpha" version prior to GitHub tracking. Bill Karsh added an SDK to SpikeGLX to allow MATLAB applications like Spoke to access its data stream, and actively supported Spoke as a use case. Several Janelia researchers provided invaluable initial feedback and testing time for this software.
