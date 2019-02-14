@@ -8,10 +8,10 @@ The active version is 0.9-Beta. Developers are actively seeking lead users. Acti
 
 ## System Requirements
 
-* Windows: 7, 8.1, 10.
-* SpikeGLX Software ([get it here](http://billkarsh.github.io/SpikeGLX)).
-* MATLAB R2015b or later (https://www.mathworks.com/downloads/)
-* MATLAB Signal Processing Toolbox (https://www.mathworks.com/products/signal.html)
+* Windows 64-bit operating system (7, 8.1, 10)
+* SpikeGLX Software (most recent phase3A [release](http://billkarsh.github.io/SpikeGLX)).
+* [MATLAB](https://www.mathworks.com/downloads), R2015b or later
+* MATLAB [Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
 
 ## Launching Spoke
 1. Launch SpikeGLX  
