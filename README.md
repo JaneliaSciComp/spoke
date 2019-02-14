@@ -1,6 +1,4 @@
 # Spoke
-=========
-
 Spoke is a MATLAB app for live selective display of neural data from high-channel-count recording systems. It offers multiple experimenter-optimized display modes based on data reduction of high-channel-count data streams. It currently supports the Whisper extracellular recording system developed byt he [Harris Lab](https://www.janelia.org/lab/harris-lab) at HHMI/Janelia Research Campus. Future support is planned for the Neuropixels recording system. 
 
 Spoke is developed & maintained by the Scientific Computing team at HHMI/Janelia, under the auspices of the Harris Lab. 
