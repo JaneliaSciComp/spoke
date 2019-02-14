@@ -22,8 +22,8 @@ The active version is 0.9-Beta. Developers are actively seeking lead users. Acti
 3. Launch MATLAB  
   A. If not done already, [add root folder and subfolders to MATLAB path](https://www.mathworks.com/help/matlab/matlab_env/add-remove-or-reorder-folders-on-the-search-path.html)  
 4. Launch Spoke  
-  B. If Spoke is on same machine; enter ```spoke``` on the MATLAB command line  
-  C. If Spoke is on separate machine; enter ```spoke('XXX.XXX.X.XXX')``` on the MATLAB command line  
+  A. If Spoke is on same machine; enter ```spoke``` on the MATLAB command line  
+  B. If Spoke is on separate machine; enter ```spoke('XXX.XXX.X.XXX')``` on the MATLAB command line  
 
 ## Running Spoke
 Spoke currently has three modes of selective data display:  
@@ -31,19 +31,22 @@ Spoke currently has three modes of selective data display:
 * Stim-triggered waveform: Display of peristimulus waveforms
 * Raster: Display of peristimulus detected "spike" events
 
-To configure each of these modes:
-* Raster mode
-  * Select the Raster radio button in Spoke control window
-* Spike-triggered waveform
-  * Select Waveform in the Spoke control window
-  * Ensure stimStartChannel is empty in the Spoke control window (enter \[\] if needed)
-* Stim-triggered waveform
-  * Select Waveform in the Spoke control window
-  * Specify stimulus channel number in stimStartChannel in the Spoke control window
+To run Spoke:
+* Configure the display mode: 
+    * Raster mode
+      * Select the Raster radio button in Spoke control window
+    * Spike-triggered waveform
+      * Select Waveform in the Spoke control window
+      * Ensure stimStartChannel is empty in the Spoke control window (enter ````[]```` if needed)
+    * Stim-triggered waveform
+      * Select Waveform in the Spoke control window
+      * Specify stimulus channel number in stimStartChannel in the Spoke control window
+* Configure additional display settings as desired:
+  * Available settings correspond to the public properties described in Spoke's class documentation (''''doc spoke.SpikeGrid'''')
+  * All of these settings are availalbe from the Spoke control window
+* Press Start to begin streaming selective display
+  * Display continues until stopped and can be restarted at any time.
 
-Configure additional display settings according to the public properties described in the Spoke Model documentation. All of these are available from the Spoke control window.
-
-Press Start to begin streaming selective display. Display continues until stopped and can be restarted at any time.
 
 ## About the Implementation
 Spoke is a consumer of the SpikeGLX data production software for Whisper neural recordings systems. Spoke retrieves data from SpikeGLX via its remote command interface over TCP/IP. 
