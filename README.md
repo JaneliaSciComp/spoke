@@ -4,14 +4,14 @@ Spoke is a MATLAB app for live selective display of neural data from high-channe
 Spoke is developed & maintained by the Scientific Computing team at HHMI/Janelia, under the auspices of the Harris Lab. 
 
 ## Release Information
-The active version is 0.9-Beta. Developers are actively seeking lead users. Active users of Whisper probes interested in using Spoke are encouraged to contact [David Ackerman](mailto:ackermand@janelia.hhmi.org). Lead user requirements will be actively considered for the planned 1.0 release.
+The active version is v0.9-beta. Developers are actively seeking lead users. Active users of Whisper probes interested in using Spoke are encouraged to contact [David Ackerman](mailto:ackermand@janelia.hhmi.org). Lead user requirements will be actively considered for the planned 1.0 release.
 
 ## System Requirements
 
-* Windows: 7, 8.1, 10.
-* SpikeGLX Software ([get it here](http://billkarsh.github.io/SpikeGLX)).
-* MATLAB R2015b or later (https://www.mathworks.com/downloads/)
-* MATLAB Signal Processing Toolbox (https://www.mathworks.com/products/signal.html)
+* Windows 64-bit operating system (7, 8.1, 10)
+* SpikeGLX Software (most recent phase3A [release](http://billkarsh.github.io/SpikeGLX)).
+* [MATLAB](https://www.mathworks.com/downloads), R2015b or later
+* MATLAB [Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
 
 ## Launching Spoke
 1. Launch SpikeGLX  
@@ -42,7 +42,7 @@ To run Spoke:
       * Select Waveform in the Spoke control window
       * Specify stimulus channel number in stimStartChannel in the Spoke control window
 * Configure additional display settings as desired:
-  * Available settings correspond to the public properties described in Spoke's class documentation (''''doc spoke.SpikeGrid'''')
+  * Available settings correspond to the public properties described in Spoke's class documentation (''''doc spoke.SpokeModel'''')
   * All of these settings are availalbe from the Spoke control window
 * Press Start to begin streaming selective display
   * Display continues until stopped and can be restarted at any time.
