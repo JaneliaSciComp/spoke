@@ -44,7 +44,7 @@ To run Spoke:
       * Select Waveform in the Spoke control window
       * Specify stimulus channel number in stimStartChannel in the Spoke control window
 * Configure additional display settings as desired:
-  * Available settings correspond to the public properties described in Spoke's class documentation (''''doc spoke.SpokeModel'''')
+  * Available settings correspond to the public properties described in Spoke's class documentation (````doc SpokeModel````)
   * All of these settings are availalbe from the Spoke control window
 * Press Start to begin streaming selective display
   * Display continues until stopped and can be restarted at any time.
