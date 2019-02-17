@@ -4,7 +4,9 @@ Spoke is a MATLAB app for live selective display of neural data from high-channe
 Spoke is developed & maintained by the Scientific Computing team at HHMI/Janelia, under the auspices of the Harris Lab. 
 
 ## Release Information
-The active version is [v0.9-beta](https://github.com/JaneliaSciComp/spoke/releases/tag/untagged-0d888cd5aea2c3e8fad1). Developers are actively seeking early adopters. Active users of Whisper probes interested to use Spoke are encouraged to contact [David Ackerman](mailto:ackermand@janelia.hhmi.org) to identify as a potential early adopter. Early adopter requirements will be actively considered for inclusion in the planned v1.0 release later this year. 
+The active version is [v0.9-beta](https://github.com/JaneliaSciComp/spoke/releases/tag/untagged-0d888cd5aea2c3e8fad1) (coming soon!).
+
+Seeking early adopters. Active users of Whisper probes interested to use Spoke are encouraged to contact [David Ackerman](mailto:ackermand@janelia.hhmi.org) to identify as a potential early adopter. Early adopter requirements will be actively considered for inclusion in the planned v1.0 release later this year. 
 
 ## System Requirements
 
