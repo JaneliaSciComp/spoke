@@ -1,6 +1,6 @@
 function [param, a, mat] = testSpikeGLX()
 
-hSGL = SpikeGL('10.102.20.125');
+hSGL = SpikeGL('10.2.0.123');
 
 if IsRunning(hSGL)
   numCalls = 100;

@@ -295,7 +295,12 @@ classdef SpokeModel < most.Model
                         
             %obj.voltsPerBitNeural = aiRangeMax / 2^(obj.SGL_BITS_PER_SAMPLE - 1) / niMNGain;
             obj.voltsPerBitNeural = (aiRangeMax ./ neuralChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
-            obj.voltsPerBitAux = (aiRangeMax ./ auxChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
+            
+            if isequal(obj.probeType,'imec')
+                obj.voltsPerBitAux = 1; %Not an analog channel in imec3A case
+            else
+                obj.voltsPerBitAux = (aiRangeMax ./ auxChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
+            end
             obj.refreshRate = obj.refreshRate; %apply default value
             
             obj.zprvResetReducedData();
@@ -1021,7 +1026,7 @@ classdef SpokeModel < most.Model
         end
         
         function zprpAssertAuxChan(obj,chanNum,propName)
-            assert(isempty(chanNum) || ismember(chanNum,union(obj.analogMuxChansAvailable, obj.analogSoloChansAvailable)), 'The property ''%s'' must specify one of the available auxiliary channels',propName);
+            assert(isempty(chanNum) || ismember(chanNum,[obj.analogMuxChansAvailable obj.analogSoloChansAvailable obj.digitalWordChansAvailable]), 'The property ''%s'' must specify one of the available auxiliary channels',propName);
             %assert(isempty(chanNum) || (chanNum <= (obj.numChansTotal-1) && chanNum >= (obj.numChansTotal - obj.numAuxChans)),'The property ''%s'' must specify one of the %d auxiliary channels',propName,obj.numAuxChans);
         end
         
@@ -1897,6 +1902,7 @@ classdef SpokeModel < most.Model
                 %  stimIdx = find(diff(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)) > (obj.stimStartThreshold / obj.voltsPerBitAux)) == 1; %Should not have off-by-one error -- lowest possible value is fullDataBufferStartIdx+1 (if the second sample crosses threshold)
                 triggerThreshVal = obj.stimStartThreshold / obj.voltsPerBitAux;
                 stimIdx = find((diff(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)) > triggerThreshVal) == 1,1); %Fixed - Ed
+                testvec = obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx);
                 %dfprintf('stimChanFullDataIdx: %d min data: %g max data: %g\n', stimChanFullDataIdx, min(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)), max(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)));
                 if ~isempty(stimIdx)
                     newStimScanNum = bufStartScanNum + stimIdx - 1;
@@ -2768,7 +2774,7 @@ classdef SpokeModel < most.Model
                 sy = sglChanCounts(3); %Sync channel, digital word(s) of 16 bits.           
                 
                 neural = 0:(ap+lfp-1);
-                digwords =  neural(end) + 1:sy;              
+                digwords =  neural(end) + (1:sy);              
                 
                 %Not supporting these imec channels presently 
                 analogmux = [];
