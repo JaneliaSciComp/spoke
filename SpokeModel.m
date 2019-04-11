@@ -254,9 +254,17 @@ classdef SpokeModel < most.Model
         
         function obj = SpokeModel(sglIPAddress,probeType)
             
-            %Process inputs
             obj.sglIPAddress = sglIPAddress;
-            obj.hSGL = SpikeGL(sglIPAddress);
+
+            assert(ismember(probeType,{'whisper' 'imec' 'imec3a' 'imec3b'}),'Probe type must be ''whisper'', ''imec'', ''imec3a'', or ''imec3b''');
+            
+            switch probeType
+                case 'imec3a'
+                    obj.hSGL = SpikeGL3a(sglIPAddress);
+                otherwise
+                    obj.hSGL = SpikeGL(sglIPAddress);                
+            end
+%            obj.hSGL = SpikeGL(sglIPAddress);
             
             obj.sglParamCache = GetParams(obj.hSGL); %initialize SpikeGL param cache
 
@@ -268,7 +276,6 @@ classdef SpokeModel < most.Model
             
             
             %Determine whether using NI (e.g. Whisper) or Imec 
-            assert(ismember(probeType,{'whisper' 'imec' 'imec3a' 'imec3b'}),'Probe type must be ''whisper'', ''imec'', ''imec3a'', or ''imec3b''');                
             switch probeType
                 case 'whisper'
                     niORim = 'Ni';
@@ -309,10 +316,13 @@ classdef SpokeModel < most.Model
             %obj.voltsPerBitNeural = aiRangeMax / 2^(obj.SGL_BITS_PER_SAMPLE - 1) / niMNGain;
             obj.voltsPerBitNeural = (aiRangeMax ./ neuralChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
             
-            if isequal(obj.probeType,'imec')
-                obj.voltsPerBitAux = 1; %Not an analog channel in imec3A case
-            else
-                obj.voltsPerBitAux = (aiRangeMax ./ auxChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
+            switch obj.probeType
+                case 'imec3a'
+                    obj.voltsPerBitAux = 1; %Not an analog channel in imec3A case
+                case 'imec3b'
+                    %TODO3b
+                case 'whisper'               
+                    obj.voltsPerBitAux = (aiRangeMax ./ auxChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
             end
             obj.refreshRate = obj.refreshRate; %apply default value
             
@@ -2796,7 +2806,7 @@ classdef SpokeModel < most.Model
                 neuralChanGains = [repmat(obj.IMEC_AP_GAIN_DEFAULT,ap,1); repmat(obj.IMEC_LFP_GAIN_DEFAULT,lfp,1)];
                 auxChanGains = [];
             elseif isequal(obj.probeType,'imec3b')
-                %TODO
+                %TODO3b
             else 
                 assert(false);
             end
