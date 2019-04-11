@@ -202,6 +202,10 @@ classdef SpokeModel < most.Model
         analogMuxChansAvailable;
         analogSoloChansAvailable;
         digitalWordChansAvailable; %Words of 16-bits        
+        
+        sampRate; %sample rate of the neural probe, regardless of type
+        aiRangeMax; %AI range of the neural probe, regardless of type
+        
     end
     
     properties (SetAccess=protected,Hidden,SetObservable,AbortSet)
@@ -246,6 +250,7 @@ classdef SpokeModel < most.Model
         
         IMEC_AP_GAIN_DEFAULT = 500;
         IMEC_LFP_GAIN_DEFAULT = 250;
+        IMEC_3B_AI_RANGE_MAX = 0.6;
         SPIKE_REFRACTORY_PERIOD_MIN = 1e-3; %Minimum spike refractory period, i.e. fastest spike detection rate to allow. 
     end
     
@@ -254,9 +259,17 @@ classdef SpokeModel < most.Model
         
         function obj = SpokeModel(sglIPAddress,probeType)
             
-            %Process inputs
             obj.sglIPAddress = sglIPAddress;
-            obj.hSGL = SpikeGL(sglIPAddress);
+
+            assert(ismember(probeType,{'whisper' 'imec' 'imec3a' 'imec3b'}),'Probe type must be ''whisper'', ''imec'', ''imec3a'', or ''imec3b''');
+            
+            switch probeType
+                case 'imec3a'
+                    obj.hSGL = SpikeGL3a(sglIPAddress);
+                otherwise
+                    obj.hSGL = SpikeGL(sglIPAddress);                
+            end
+%            obj.hSGL = SpikeGL(sglIPAddress);
             
             obj.sglParamCache = GetParams(obj.hSGL); %initialize SpikeGL param cache
 
@@ -268,7 +281,6 @@ classdef SpokeModel < most.Model
             
             
             %Determine whether using NI (e.g. Whisper) or Imec 
-            assert(ismember(probeType,{'whisper' 'imec' 'imec3a' 'imec3b'}),'Probe type must be ''whisper'', ''imec'', ''imec3a'', or ''imec3b''');                
             switch probeType
                 case 'whisper'
                     niORim = 'Ni';
@@ -282,8 +294,7 @@ classdef SpokeModel < most.Model
                     probeType = 'imec3b';
                     probeClass = 'imec';
                     niORim = 'Im';                    
-                    assert(false,'Imec Phase3b probes are not yet supported at this time');
-                    assert(isequal(obj.sglParamCache.imEnabled,'true'),'Failed to detect Imec device');
+                    %TODO3b: add check that imec probe is present                    
                 otherwise
                     assert(false);
             end
@@ -291,9 +302,15 @@ classdef SpokeModel < most.Model
             obj.probeClass = probeClass;
             
             %Configure functions & parameters to be NI/Imec generalized            
-            obj.sglDeviceFcns.Fetch = str2func(['@Fetch' niORim]);
-            obj.sglDeviceFcns.GetSaveChans = str2func(['@GetSaveChans' niORim]);
-            obj.sglDeviceFcns.GetScanCount = str2func(['@GetScanCount' niORim]);
+            if isequal(probeType,'imec3b')                
+                obj.sglDeviceFcns.Fetch = @(lastMaxReadableScanNum,scansToRead,sglStreamChans)Fetch(obj.hSGL,0,lastMaxReadableScanNum,scansToRead,sglStreamChans);
+                obj.sglDeviceFcns.GetSaveChans = @()GetSaveChans(obj.hSGL,0);                
+                obj.sglDeviceFcns.GetScanCount = @()GetScanCount(obj.hSGL,0);
+            else
+                obj.sglDeviceFcns.Fetch = str2func(['@Fetch' niORim]);
+                obj.sglDeviceFcns.GetSaveChans = str2func(['@GetSaveChans' niORim]);
+                obj.sglDeviceFcns.GetScanCount = str2func(['@GetScanCount' niORim]);
+            end
             obj.sglParamCache = zlclGeneralizeSpikeGLXParams(obj.sglParamCache, niORim);
            
             %Immutable prop initializations
@@ -303,20 +320,25 @@ classdef SpokeModel < most.Model
             obj.hTimer = timer('Name','Spoke Waveform Grid Timer','ExecutionMode','fixedRate','TimerFcn',@obj.zcbkTimerFcn,'BusyMode','queue','StartDelay',0.1);
             obj.hPSTHTimer = timer('Name','Spoke Plot PSTH Timer','ExecutionMode','fixedRate','TimerFcn',@(src,evnt)obj.plotPSTH,'BusyMode','drop','StartDelay',0.1); 
                         
-            %Programmatic prop intializations
-            aiRangeMax = obj.sglParamCache.xxxAiRangeMax;
-                        
-            %obj.voltsPerBitNeural = aiRangeMax / 2^(obj.SGL_BITS_PER_SAMPLE - 1) / niMNGain;
-            obj.voltsPerBitNeural = (aiRangeMax ./ neuralChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
-            
+            %Programmatic prop intializations                                                        
             switch obj.probeType
                 case 'imec3a'
-                    obj.voltsPerBitAux = 1; %Not an analog channel in imec3A case
+                    obj.aiRangeMax = obj.sglParamCache.xxxAiRangeMax;
+                    obj.sampRate = obj.sglParamCache.xxxSampRate;
+                    obj.voltsPerBitAux = 1; %Not an analog channel in imec cases
                 case 'imec3b'
-                    %TODO3b
+                    obj.aiRangeMax = obj.IMEC_3B_AI_RANGE_MAX;
+                    obj.sampRate = GetSampleRate(obj.hSGL,0);
+                    obj.voltsPerBitAux = 1; %Not an analog channel in imec cases
                 case 'whisper'               
-                    obj.voltsPerBitAux = (aiRangeMax ./ auxChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
+                    obj.aiRangeMax = obj.sglParamCache.xxxAiRangeMax;
+                    obj.sampRate = obj.sglParamCache.xxxSampRate;
+                    obj.voltsPerBitAux = (obj.aiRangeMax ./ auxChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
             end
+            
+             %obj.voltsPerBitNeural = aiRangeMax / 2^(obj.SGL_BITS_PER_SAMPLE - 1) / niMNGain;
+            obj.voltsPerBitNeural = (obj.aiRangeMax ./ neuralChanGains) / ( 2^(obj.SGL_BITS_PER_SAMPLE - 1));
+
             obj.refreshRate = obj.refreshRate; %apply default value
             
             obj.zprvResetReducedData();
@@ -334,7 +356,7 @@ classdef SpokeModel < most.Model
             end
             obj.zprvInitializeRasterGridLines();
             
-            obj.verticalRange = [-aiRangeMax aiRangeMax] / 1000; % Use millivolts for spikes.
+            obj.verticalRange = [-obj.aiRangeMax obj.aiRangeMax] / 1000; % Use millivolts for spikes.
             obj.tabDisplayed = 1;
             
             %Clean-up
@@ -492,11 +514,11 @@ classdef SpokeModel < most.Model
                 obj.filterCoefficients = {};
             else
                 if val(1) == 0
-                    [b,a] = butter(1,obj.filterWindow(2) * 2 / obj.sglParamCache.xxxSampRate,'low');
+                    [b,a] = butter(1,obj.filterWindow(2) * 2 / obj.sampRate,'low');
                 elseif isinf(val(2)) %high-pass filter
-                    [b,a] = butter(1,obj.filterWindow(1) * 2 / obj.sglParamCache.xxxSampRate,'high');
+                    [b,a] = butter(1,obj.filterWindow(1) * 2 / obj.sampRate,'high');
                 else
-                    [b,a] = butter(1,obj.filterWindow * 2 / obj.sglParamCache.xxxSampRate,'bandpass');
+                    [b,a] = butter(1,obj.filterWindow * 2 / obj.sampRate,'bandpass');
                 end
                 
                 obj.filterCoefficients = {a b};
@@ -528,7 +550,7 @@ classdef SpokeModel < most.Model
         end
         
         function val = get.maxBufSizeScans(obj)
-            val = round(obj.maxBufSizeSeconds * obj.sglParamCache.xxxSampRate);
+            val = round(obj.maxBufSizeSeconds * obj.sampRate);
         end
         
         
@@ -589,7 +611,7 @@ classdef SpokeModel < most.Model
         end
         
         function val = get.refreshPeriodAvgScans(obj)
-            val = round(get(obj.hTimer,'Period') * obj.sglParamCache.xxxSampRate);
+            val = round(get(obj.hTimer,'Period') * obj.sampRate);
         end
 
         function set.refreshRate(obj,val)
@@ -598,7 +620,7 @@ classdef SpokeModel < most.Model
             
             %Ensure value does not exceed the processing refresh period
             hrng = diff(obj.horizontalRange);
-            f_samp = obj.sglParamCache.xxxSampRate;
+            f_samp = obj.sampRate;
             assert(ceil(hrng * f_samp) < floor(f_samp/val),'horizontalRange must be shorter than the processing refresh period');
             
             refreshPeriodRounded = round(1e3 * 1/val) * 1e-3; %Make an integer number of milliseconds
@@ -613,7 +635,7 @@ classdef SpokeModel < most.Model
         end
         
         function val = get.horizontalRangeScans(obj)
-            val = round(obj.horizontalRange * obj.sglParamCache.xxxSampRate);
+            val = round(obj.horizontalRange * obj.sampRate);
         end
         
         function val = get.stimEventTypes_(obj)
@@ -671,7 +693,7 @@ classdef SpokeModel < most.Model
             obj.validatePropArg('verticalRange',val);
             
             if strcmpi(obj.waveformAmpUnits,'volts');
-                aiRangeMax = obj.sglParamCache.xxxAiRangeMax;
+                aiRangeMax = obj.aiRangeMax;
                 if any(abs(val) > 1.1 * aiRangeMax)
                     warning('Specified range exceeded input channel voltage range by greater than 10% -- spike amplitude axis limits clamped');
                     val = min(val,1.1 * aiRangeMax);
@@ -699,7 +721,7 @@ classdef SpokeModel < most.Model
             
             %Ensure value does not exceed processing refresh period
             dval = diff(val);
-            f_samp = obj.sglParamCache.xxxSampRate;
+            f_samp = obj.sampRate;
             assert(dval > 0,'Horizontal range must be specified from minimum to maximum');
             assert(ceil(dval * f_samp) < floor(f_samp/obj.refreshRate),'horizontalRange must be shorter than the processing refresh period');
             
@@ -718,7 +740,7 @@ classdef SpokeModel < most.Model
             %Calculate MaximumNumPoints
             
             if strcmp(obj.waveformsPerPlotClearMode,'oldest')
-                spikeSampleRate = obj.sglParamCache.xxxSampRate;
+                spikeSampleRate = obj.sampRate;
                 numPointsPerWindow = spikeSampleRate * (obj.horizontalRange(2)-obj.horizontalRange(1));
                 val = ceil(obj.waveformsPerPlot * numPointsPerWindow);
             else
@@ -985,7 +1007,7 @@ classdef SpokeModel < most.Model
         end
         
         function val = get.baselineStatsRefreshPeriodScans(obj)
-            val = round(obj.baselineStatsRefreshPeriod * obj.sglParamCache.xxxSampRate);
+            val = round(obj.baselineStatsRefreshPeriod * obj.sampRate);
         end
         
         function set.thresholdType(obj,val)
@@ -1003,7 +1025,7 @@ classdef SpokeModel < most.Model
                 %TODO(?): A smarter adjustment based on the last-cached RMS values, somehow handlign the variety across channels
                 switch val
                     case 'volts'
-                        aiRangeMax = obj.sglParamCache.xxxAiRangeMax;
+                        aiRangeMax = obj.aiRangeMax;
                         obj.thresholdVal = .1 * aiRangeMax;
                     case 'rmsMultiple'
                         obj.thresholdVal = 5;
@@ -1289,7 +1311,7 @@ classdef SpokeModel < most.Model
                     colorIdxs = 1:length(eventTypes);
                 end
                 
-                scanPeriod = 1/ obj.sglParamCache.xxxSampRate;
+                scanPeriod = 1/ obj.sampRate;
                 scansToBin = max(1,round(obj.psthTimeBin/scanPeriod));
                 scanPeriodBinned = scanPeriod * scansToBin;
                 
@@ -1461,7 +1483,7 @@ classdef SpokeModel < most.Model
                 
                 % cnt = GetScanCount(obj.hSGL);
                 
-                cnt = obj.sglDeviceFcns.GetScanCount(obj.hSGL);
+                cnt = obj.sglDeviceFcns.GetScanCount();
                 
                 %Use current scan number as reference scan number on first timer entry following start/restart
                 if ismember(obj.bufScanNumEnd,[0 -1])
@@ -1483,7 +1505,7 @@ classdef SpokeModel < most.Model
                 stimulusMode = ~isempty(obj.stimStartChannel) && ~isempty(obj.stimStartThreshold);
                 stimulusTriggeredWaveformMode = strcmpi(obj.displayMode,'waveform') && stimulusMode;
                 
-                sampRate = obj.sglParamCache.xxxSampRate;
+                sampRate = obj.sampRate;
                 sampPeriod = 1 / sampRate;
                 
                 %Handle case of no new data
@@ -1517,7 +1539,7 @@ classdef SpokeModel < most.Model
                 %STAGE 1: Read newly available data
                 %[scansToRead, newData] = znstReadAvailableData(obj.maxReadableScanNum-obj.priorfileMaxReadableScanNum-scansToRead,scansToRead); %obj.bufScanNumEnd will be 0 in case of file-rollover or SpikeGL stop/restart
                 %                 newData = GetDAQData(obj.hSGL,obj.lastMaxReadableScanNum,scansToRead,obj.sglStreamChans);
-                newData = obj.sglDeviceFcns.Fetch(obj.hSGL,obj.lastMaxReadableScanNum,scansToRead,obj.sglStreamChans);
+                newData = obj.sglDeviceFcns.Fetch(obj.lastMaxReadableScanNum,scansToRead,obj.sglStreamChans);
                 obj.lastMaxReadableScanNum = obj.lastMaxReadableScanNum + scansToRead;
                 t1 = toc(t0);
                 
@@ -2164,7 +2186,7 @@ classdef SpokeModel < most.Model
                     zlclDetectSpikes(obj.reducedData, ... 
                     obj.fullDataBuffer, ...
                     bufStartScanNum, ...
-                    round(obj.spikeRefractoryPeriod * obj.sglParamCache.xxxSampRate), ...
+                    round(obj.spikeRefractoryPeriod * obj.sampRate), ...
                     threshVal, ...
                     obj.thresholdAbsolute, ...
                     threshMean, ...
@@ -2180,7 +2202,7 @@ classdef SpokeModel < most.Model
                 newSpikeScanNums = zlclDetectSpikes(obj.reducedData, ...
                     obj.fullDataBuffer, ...
                     bufStartScanNum, ...
-                    round(obj.spikeRefractoryPeriod * obj.sglParamCache.xxxSampRate), ...
+                    round(obj.spikeRefractoryPeriod * obj.sampRate), ...
                     threshVal, ...
                     obj.thresholdAbsolute, ...
                     0, ...
@@ -2194,7 +2216,7 @@ classdef SpokeModel < most.Model
         end
         
         function zprvUpdateRasterPlot(obj,chanNewSpikes)
-            sampPeriod = 1 / obj.sglParamCache.xxxSampRate;
+            sampPeriod = 1 / obj.sampRate;
             colorOrder = get(0,'DefaultAxesColorOrder');
             
             plotAllSpikes = (nargin < 2);
@@ -2743,65 +2765,67 @@ classdef SpokeModel < most.Model
             %  * Extract available chans via GetAcqChanCounts()
             %  * Assume constant & default gains for all AP & LFP channels
             
-            if isequal(obj.probeType,'whisper')
-                muxFactor = obj.sglParamCache.niMuxFactor;
-                
-                neural = [];
-                analogmux = [];
-                analogsolo = [];
-                nextchan = 0;
-                
-                %Extract the 4 types of chans supported through IMEC phase 2
-                mn = str2num(num2str(obj.sglParamCache.niMNChans1)); %#ok<ST2NM>
-                ma = str2num(num2str(obj.sglParamCache.niMAChans1)); %#ok<ST2NM>
-                xa = str2num(num2str(obj.sglParamCache.niXAChans1)); %#ok<ST2NM>
-                dw = str2num(num2str(obj.sglParamCache.niXDChans1)); %#ok<NASGU,ST2NM>
-                
-                %Determine the acquisition channel numbers
-                for i=1:length(mn)
-                    neural = [neural ((i-1) *muxFactor) + (0:(muxFactor-1))]; %#ok<AGROW>
-                end
-                nextchan = neural(end) + 1;
-                
-                if ~isempty(ma)
-                    for i=1:length(ma)
-                        analogmux = [analogmux nextchan + (i-1)*muxFactor + (0:(muxFactor-1))]; %#ok<AGROW>
-                    end
-                    nextchan = analogmux(end) + 1;
-                end
-                
-                
-                for i = 1:length(xa)
-                    analogsolo = [analogsolo nextchan + (i-1)]; %#ok<AGROW>
-                end
-                
-                digwords = []; %Not supported (or used, anecdotally) at this time. need to understand line to channel mapping rules.
-                
-                %Return gains
-                neuralChanGains = obj.sglParamCache.niMNGain;
-                auxChanGains = obj.sglParamCache.niMAGain;
-            elseif isequal(obj.probeType,'imec3a')
-                pause(5);
-                sglChanCounts = GetAcqChanCounts(obj.hSGL);
-                pause(1);
-                
-                ap = sglChanCounts(1); %Neural channels, filtered for action potential detection
-                lfp = sglChanCounts(2); %Neural channels, filtered for local field potential detection
-                sy = sglChanCounts(3); %Sync channel, digital word(s) of 16 bits.           
-                
-                neural = 0:(ap+lfp-1);
-                digwords =  neural(end) + (1:sy);              
-                
-                %Not supporting these imec channels presently 
-                analogmux = [];
-                analogsolo = [];
-                
-                neuralChanGains = [repmat(obj.IMEC_AP_GAIN_DEFAULT,ap,1); repmat(obj.IMEC_LFP_GAIN_DEFAULT,lfp,1)];
-                auxChanGains = [];
-            elseif isequal(obj.probeType,'imec3b')
-                %TODO3b
-            else 
-                assert(false);
+           switch obj.probeType
+               case 'whisper'
+                   muxFactor = obj.sglParamCache.niMuxFactor;
+                   
+                   neural = [];
+                   analogmux = [];
+                   analogsolo = [];
+                   nextchan = 0;
+                   
+                   %Extract the 4 types of chans supported through IMEC phase 2
+                   mn = str2num(num2str(obj.sglParamCache.niMNChans1)); %#ok<ST2NM>
+                   ma = str2num(num2str(obj.sglParamCache.niMAChans1)); %#ok<ST2NM>
+                   xa = str2num(num2str(obj.sglParamCache.niXAChans1)); %#ok<ST2NM>
+                   dw = str2num(num2str(obj.sglParamCache.niXDChans1)); %#ok<NASGU,ST2NM>
+                   
+                   %Determine the acquisition channel numbers
+                   for i=1:length(mn)
+                       neural = [neural ((i-1) *muxFactor) + (0:(muxFactor-1))]; %#ok<AGROW>
+                   end
+                   nextchan = neural(end) + 1;
+                   
+                   if ~isempty(ma)
+                       for i=1:length(ma)
+                           analogmux = [analogmux nextchan + (i-1)*muxFactor + (0:(muxFactor-1))]; %#ok<AGROW>
+                       end
+                       nextchan = analogmux(end) + 1;
+                   end
+                                      
+                   for i = 1:length(xa)
+                       analogsolo = [analogsolo nextchan + (i-1)]; %#ok<AGROW>
+                   end
+                   
+                   digwords = []; %Not supported (or used, anecdotally) at this time. need to understand line to channel mapping rules.
+                   
+                   %Return gains
+                   neuralChanGains = obj.sglParamCache.niMNGain;
+                   auxChanGains = obj.sglParamCache.niMAGain;
+               case {'imec3a' 'imec3b'}
+                   pause(5);
+                   if isequal(obj.probeType,'imec3a')
+                       sglChanCounts = GetAcqChanCounts(obj.hSGL);
+                   else
+                       sglChanCounts = GetAcqChanCounts(obj.hSGL,0);
+                   end
+                   pause(1);
+                   
+                   ap = sglChanCounts(1); %Neural channels, filtered for action potential detection
+                   lfp = sglChanCounts(2); %Neural channels, filtered for local field potential detection
+                   sy = sglChanCounts(3); %Sync channel, digital word(s) of 16 bits.
+                   
+                   neural = 0:(ap+lfp-1);
+                   digwords =  neural(end) + (1:sy);
+                   
+                   %Not supporting these imec channels presently
+                   analogmux = [];
+                   analogsolo = [];
+                   
+                   neuralChanGains = [repmat(obj.IMEC_AP_GAIN_DEFAULT,ap,1); repmat(obj.IMEC_LFP_GAIN_DEFAULT,lfp,1)];
+                   auxChanGains = [];            
+               otherwise 
+                   assert(false);
             end
                 
         end
@@ -2817,11 +2841,11 @@ classdef SpokeModel < most.Model
         
         function zprvApplyStreamChansAndChanMap(obj)         
  
-            obj.sglStreamChans = obj.sglDeviceFcns.GetSaveChans(obj.hSGL); %save channels as specified in SpikeGLX.
+            obj.sglStreamChans = obj.sglDeviceFcns.GetSaveChans(); %save channels as specified in SpikeGLX.
             
             obj.neuralChanAcqList = intersect(obj.sglStreamChans,obj.neuralChansAvailable);
             
-            if isempty(obj.sglParamCache.snsNiChanMapFile)
+            if isequal(obj.probeType,'imec3b') || isempty(obj.sglParamCache.snsNiChanMapFile)
                 fprintf('Channel Remapping: no snsNiChanMapFile defined in SpikeGLX, defaulting to standard mapping...\n');
                 obj.neuralChanDispList = obj.neuralChanAcqList;
             else
@@ -3095,7 +3119,10 @@ niOrIm = lower(niOrIm);
 assert(ismember(niOrIm,{'ni' 'im'}));
 
 for i=1:numel(params)
-    sglParams.(sprintf('xxx%s',params{i})) = sglParams.(sprintf('%s%s',niOrIm,params{i}));
+    fname = sprintf('%s%s',niOrIm,params{i});
+    if isfield(sglParams,fname)
+        sglParams.(sprintf('xxx%s',params{i})) = sglParams.(fname);
+    end
 end
 
 end

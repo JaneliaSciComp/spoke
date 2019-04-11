@@ -43,12 +43,6 @@
 %
 % StopRun( my_s );  % stop run and clean up
 %
-% StreamID
-% --------
-%
-% Several functions work for either the NI data stream or for any of the
-% N enabled IMEC probe streams. StreamID = -1 selects NI. Values in the
-% range [0,..,N-1] select an IMEC stream.
 %
 % FUNCTION REFERENCE
 % ------------------
@@ -78,7 +72,8 @@
 %
 %                Retrieve a listing of files in the data directory.
 %
-%    [daqData,headCt] = Fetch( myObj, streamID, start_scan, scan_ct, channel_subset, downsample_ratio )
+%    [daqData,headCt] = FetchIm( myObj, start_scan, scan_ct, channel_subset, downsample_ratio ),
+%                       FetchNi( myObj, start_scan, scan_ct, channel_subset, downsample_ratio )
 %
 %                Get MxN matrix of stream data.
 %                M = scan_ct = max samples to fetch.
@@ -92,7 +87,8 @@
 %
 %                Also returns headCt = index of first timepoint in matrix.
 %
-%    [daqData,headCt] = FetchLatest( myObj, streamID, scan_ct, channel_subset, downsample_ratio )
+%    [daqData,headCt] = FetchLatestIm( myObj, scan_ct, channel_subset, downsample_ratio ),
+%                       FetchLatestNi( myObj, scan_ct, channel_subset, downsample_ratio )
 %
 %                Get MxN matrix of the most recent stream data.
 %                M = scan_ct = max samples to fetch.
@@ -104,26 +100,24 @@
 %
 %                Also returns headCt = index of first timepoint in matrix.
 %
-%    chanCounts = GetAcqChanCounts( myobj, streamID )
+%    chanCounts = GetAcqChanCounts( myobj )
 %
 %                Returns a vector containing the counts of 16-bit
-%                words of each class being acquired.
-%
-%                streamID = -1: NI channels: {MN,MA,XA,DW}.
-%                streamID >= 0: IM channels: {AP,LF,SY}.
+%                words of each class being acquired {AP,LF,SY,MN,MA,XA,DW}.
 %
 %    dir = GetDataDir( myobj )
 %
 %                Get global run data directory.
 %
-%    startCt = GetFileStartCount( myobj, streamID )
+%    startCt = GetFileStartCountIm( myobj ),
+%              GetFileStartCountNi( myobj )
 %
 %                Returns index of first scan in latest file,
 %                or zero if not available.
 %
-%    [SN,type] = GetImProbeSN( myobj, streamID )
+%    [SN,option] = GetImProbeSN( myobj )
 %
-%                Returns serial number string (SN) and integer type
+%                Returns serial number string (SN) and integer option
 %                of current IMEC probe.
 %
 %    params = GetParams( myobj )
@@ -135,17 +129,14 @@
 %
 %                Get run base name.
 %
-%    sampleRate = GetSampleRate( myobj, streamID )
-%
-%                Returns sample rate of selected stream in Hz,
-%                or zero if not enabled.
-%
-%    channelSubset = GetSaveChans( myobj, streamID )
+%    channelSubset = GetSaveChansIm( myobj ),
+%                    GetSaveChansNi( myobj )
 %
 %                Returns a vector containing the indices of
 %                channels being saved.
 %
-%    scanCount = GetScanCount( myobj, streamID )
+%    scanCount = GetScanCountIm( myobj ),
+%                GetScanCountNi( myobj )
 %
 %                Returns number of scans since current run started
 %                or zero if not running.
@@ -179,11 +170,10 @@
 %                Returns 1 if the software is currently running
 %                AND saving data.
 %
-%    boolval = IsUserOrder( myobj, streamID )
+%    boolval = IsUserOrderIm( myobj ),
+%              IsUserOrderNi( myobj )
 %
 %                Returns 1 if graphs currently sorted in user order.
-%
-%                This query is sent only to the main Graphs window.
 %
 %    res = Par2( myobj, op, filename )
 %
@@ -202,10 +192,10 @@
 %                Set audio output on/off. Note that this command has
 %                no effect if not currently running.
 %
-%    myobj = SetAudioParams( myobj, group_string, params_struct )
+%    myobj = SetAudioParams( myobj, params_struct )
 %
-%                Set subgroup of parameters for audio-out operation. Parameters
-%                are a struct of name/value pairs. This call stops current output.
+%                Set parameters for audio-out operation. Parameters are a
+%                struct of name/value pairs. This call stops current output.
 %                Call SetAudioEnable( myobj, 1 ) to restart it.
 %
 %    myobj = SetDataDir( myobj, dir )
