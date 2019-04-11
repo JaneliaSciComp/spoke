@@ -258,7 +258,7 @@ classdef SpokeModel < most.Model
     %% CONSTRUCTOR/DESTRUCTOR
     methods
         
-        function obj = SpokeModel(sglIPAddress,probeType)
+        function obj = SpokeModel(sglIPAddress,probeType,probeNumber)
             
             obj.sglIPAddress = sglIPAddress;
 
@@ -279,25 +279,26 @@ classdef SpokeModel < most.Model
             obj.ensureClassDataFile(s,mfilename('class'));
             %Initialize resources
             obj.ziniCreateGrids(); %Create spike waveform grid figure
-            
-            
+                        
             %Determine whether using NI (e.g. Whisper) or Imec 
-            probeCount = 1;
             switch probeType
                 case 'whisper'
                     niORim = 'Ni';
                     probeClass = 'whisper';
                     assert(isequal(obj.sglParamCache.niEnabled,'true'),'Failed to detect NI device for Whisper probe');
+                    assert(probeNumber == 0, 'Only one probe supported for Whisper mode');
                 case 'imec3a'
                     niORim = 'Im';
                     probeClass = 'imec';
                     assert(isequal(obj.sglParamCache.imEnabled,'true'),'Failed to detect Imec device');
+                    assert(probeNumber == 0, 'Only one probe supported for Imec Phase3A mode');
                 case {'imec' 'imec3b' 'imec3b2'}
                     probeType = 'imec3b2';
                     probeClass = 'imec';
                     niORim = 'Im';           
                     probeCount = GetImProbeCount(obj.hSGL);
-                    assert(probeCount > 0,'Failed to detect Imec device');                                       
+                    assert(probeCount > 0,'Failed to detect Imec device');     
+                    assert(ismember(probeNumber,0:(probeCount-1)),'Incorrect probeNumber input. Detected %d probes, and expect probeNumber to be integer value between 0 and %d', probeCount, probeCount-1);
                 otherwise
                     assert(false);
             end
@@ -306,9 +307,9 @@ classdef SpokeModel < most.Model
             
             %Configure functions & parameters to be NI/Imec generalized            
             if isequal(probeType,'imec3b2')                
-                obj.sglDeviceFcns.Fetch = @(lastMaxReadableScanNum,scansToRead,sglStreamChans)Fetch(obj.hSGL,0,lastMaxReadableScanNum,scansToRead,sglStreamChans);
-                obj.sglDeviceFcns.GetSaveChans = @()GetSaveChans(obj.hSGL,0);                
-                obj.sglDeviceFcns.GetScanCount = @()GetScanCount(obj.hSGL,0);
+                obj.sglDeviceFcns.Fetch = @(lastMaxReadableScanNum,scansToRead,sglStreamChans)Fetch(obj.hSGL,probeNumber,lastMaxReadableScanNum,scansToRead,sglStreamChans);
+                obj.sglDeviceFcns.GetSaveChans = @()GetSaveChans(obj.hSGL,probeNumber);                
+                obj.sglDeviceFcns.GetScanCount = @()GetScanCount(obj.hSGL,probeNumber);
             else
                 obj.sglDeviceFcns.Fetch = str2func(['@Fetch' niORim]);
                 obj.sglDeviceFcns.GetSaveChans = str2func(['@GetSaveChans' niORim]);
@@ -317,7 +318,7 @@ classdef SpokeModel < most.Model
             obj.sglParamCache = zlclGeneralizeSpikeGLXParams(obj.sglParamCache, niORim);
            
             %Immutable prop initializations
-            [obj.neuralChansAvailable, obj.analogMuxChansAvailable, obj.analogSoloChansAvailable, obj.digitalWordChansAvailable,neuralChanGains,auxChanGains] = obj.zprvGetAvailAcqChansAndGains();
+            [obj.neuralChansAvailable, obj.analogMuxChansAvailable, obj.analogSoloChansAvailable, obj.digitalWordChansAvailable,neuralChanGains,auxChanGains] = obj.zprvGetAvailAcqChansAndGains(probeNumber);
              
             %Configure main timer functions for live processing
             obj.hTimer = timer('Name','Spoke Waveform Grid Timer','ExecutionMode','fixedRate','TimerFcn',@obj.zcbkTimerFcn,'BusyMode','queue','StartDelay',0.1);
@@ -330,10 +331,10 @@ classdef SpokeModel < most.Model
                     obj.sampRate = obj.sglParamCache.xxxSampRate;
                     obj.voltsPerBitAux = 1; %Not an analog channel in imec cases
                 case 'imec3b2'
-                    [aiRangeMin, aiRangeMax] = GetImVoltageRange(obj.hSGL,0);
+                    [aiRangeMin, aiRangeMax] = GetImVoltageRange(obj.hSGL,probeNumber);
                     assert(abs(aiRangeMin) == aiRangeMax,'Assymetric imec voltage range detected and is not supported');
                     obj.aiRangeMax = aiRangeMax;
-                    obj.sampRate = GetSampleRate(obj.hSGL,0);
+                    obj.sampRate = GetSampleRate(obj.hSGL,probeNumber);
                     obj.voltsPerBitAux = 1; %Not an analog channel in imec cases
                 case 'whisper'               
                     obj.aiRangeMax = obj.sglParamCache.xxxAiRangeMax;
@@ -2764,7 +2765,7 @@ classdef SpokeModel < most.Model
             end
         end
         
-        function [neural,analogmux,analogsolo,digwords,neuralChanGains,auxChanGains] = zprvGetAvailAcqChansAndGains(obj)
+        function [neural,analogmux,analogsolo,digwords,neuralChanGains,auxChanGains] = zprvGetAvailAcqChansAndGains(obj,probeNumber)
             %Determine from teh SpikeGL assignments the set of acquisition
             %channel numbers, for each of the channel type groups
             %
@@ -2819,7 +2820,7 @@ classdef SpokeModel < most.Model
                    if isequal(obj.probeType,'imec3a')
                        sglChanCounts = GetAcqChanCounts(obj.hSGL);
                    else
-                       sglChanCounts = GetAcqChanCounts(obj.hSGL,0);
+                       sglChanCounts = GetAcqChanCounts(obj.hSGL,probeNumber);
                    end
                    pause(1);
                    

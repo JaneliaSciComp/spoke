@@ -9,6 +9,8 @@ opengl('save','software');
 % make the spoke main controller object
 
 probeType = 'whisper'; % Default to 'whisper'
+probeNumber = 0; %Default to first detected probe
+
 if nargin <= 1
    [~,s] = system('ipconfig /all');
    
@@ -27,9 +29,13 @@ if nargin <= 1
 else
     ipAddress = varargin{1};
     probeType = varargin{2};
+    
+    if nargin == 3
+        probeNumber = varargin{3};
+    end
 end
    
-hSpoke = SpokeModel(ipAddress, probeType);
+hSpoke = SpokeModel(ipAddress, probeType, probeNumber);
 hSpokeCtl = SpokeController(hSpoke);
 
 assignin('base','hGrid',hSpoke);
