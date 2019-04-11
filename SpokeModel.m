@@ -75,7 +75,7 @@ classdef SpokeModel < most.Model
     end
     
     properties (SetAccess=immutable)
-        probeType = 'whisper'; %One of {'whisper' 'imec3a' 'imec3b'}.  
+        probeType = 'whisper'; %One of {'whisper' 'imec3a' 'imec3b2'}.  
     end       
     
     properties (SetAccess=private)
@@ -261,7 +261,7 @@ classdef SpokeModel < most.Model
             
             obj.sglIPAddress = sglIPAddress;
 
-            assert(ismember(probeType,{'whisper' 'imec' 'imec3a' 'imec3b'}),'Probe type must be ''whisper'', ''imec'', ''imec3a'', or ''imec3b''');
+            assert(ismember(probeType,{'whisper' 'imec' 'imec3a' 'imec3b' 'imec3b2'}),'Probe type must be ''whisper'', ''imec'', ''imec3a'', or ''imec3b2''');
             
             switch probeType
                 case 'imec3a'
@@ -290,8 +290,8 @@ classdef SpokeModel < most.Model
                     niORim = 'Im';
                     probeClass = 'imec';
                     assert(isequal(obj.sglParamCache.imEnabled,'true'),'Failed to detect Imec device');
-                case {'imec' 'imec3b'}
-                    probeType = 'imec3b';
+                case {'imec' 'imec3b' 'imec3b2'}
+                    probeType = 'imec3b2';
                     probeClass = 'imec';
                     niORim = 'Im';                    
                     %TODO3b: add check that imec probe is present                    
@@ -302,7 +302,7 @@ classdef SpokeModel < most.Model
             obj.probeClass = probeClass;
             
             %Configure functions & parameters to be NI/Imec generalized            
-            if isequal(probeType,'imec3b')                
+            if isequal(probeType,'imec3b2')                
                 obj.sglDeviceFcns.Fetch = @(lastMaxReadableScanNum,scansToRead,sglStreamChans)Fetch(obj.hSGL,0,lastMaxReadableScanNum,scansToRead,sglStreamChans);
                 obj.sglDeviceFcns.GetSaveChans = @()GetSaveChans(obj.hSGL,0);                
                 obj.sglDeviceFcns.GetScanCount = @()GetScanCount(obj.hSGL,0);
@@ -326,7 +326,7 @@ classdef SpokeModel < most.Model
                     obj.aiRangeMax = obj.sglParamCache.xxxAiRangeMax;
                     obj.sampRate = obj.sglParamCache.xxxSampRate;
                     obj.voltsPerBitAux = 1; %Not an analog channel in imec cases
-                case 'imec3b'
+                case 'imec3b2'
                     obj.aiRangeMax = obj.IMEC_3B_AI_RANGE_MAX;
                     obj.sampRate = GetSampleRate(obj.hSGL,0);
                     obj.voltsPerBitAux = 1; %Not an analog channel in imec cases
@@ -1088,7 +1088,7 @@ classdef SpokeModel < most.Model
             obj.hSGL = SpikeGL(obj.sglIPAddress);
             obj.sglParamCache = GetParams(obj.hSGL);
             niORim = 'ni';
-            if ismember(obj.probeType, {'imec' 'imec3a' 'imec3b'})
+            if ismember(obj.probeType, {'imec' 'imec3a' 'imec3b2'})
                 niORim = 'im';
             end
             obj.sglParamCache = zlclGeneralizeSpikeGLXParams(obj.sglParamCache, niORim);
@@ -1939,6 +1939,7 @@ classdef SpokeModel < most.Model
                 % stimIdx = find(diff(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx) > (obj.stimStartThreshold / obj.voltsPerBitAux)) == 1, 1); %Should not have off-by-one error -- lowest possible value is fullDataBufferStartIdx+1 (if the second sample crosses threshold)
                 %  stimIdx = find(diff(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)) > (obj.stimStartThreshold / obj.voltsPerBitAux)) == 1; %Should not have off-by-one error -- lowest possible value is fullDataBufferStartIdx+1 (if the second sample crosses threshold)
                 triggerThreshVal = obj.stimStartThreshold / obj.voltsPerBitAux;
+               
                 stimIdx = find((diff(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)) > triggerThreshVal) == 1,1); %Fixed - Ed
                 testvec = obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx);
                 %dfprintf('stimChanFullDataIdx: %d min data: %g max data: %g\n', stimChanFullDataIdx, min(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)), max(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)));
@@ -2802,7 +2803,7 @@ classdef SpokeModel < most.Model
                    %Return gains
                    neuralChanGains = obj.sglParamCache.niMNGain;
                    auxChanGains = obj.sglParamCache.niMAGain;
-               case {'imec3a' 'imec3b'}
+               case {'imec3a' 'imec3b2'}
                    pause(5);
                    if isequal(obj.probeType,'imec3a')
                        sglChanCounts = GetAcqChanCounts(obj.hSGL);
@@ -2845,7 +2846,7 @@ classdef SpokeModel < most.Model
             
             obj.neuralChanAcqList = intersect(obj.sglStreamChans,obj.neuralChansAvailable);
             
-            if isequal(obj.probeType,'imec3b') || isempty(obj.sglParamCache.snsNiChanMapFile)
+            if isequal(obj.probeType,'imec3b2') || isempty(obj.sglParamCache.snsNiChanMapFile)
                 fprintf('Channel Remapping: no snsNiChanMapFile defined in SpikeGLX, defaulting to standard mapping...\n');
                 obj.neuralChanDispList = obj.neuralChanAcqList;
             else
