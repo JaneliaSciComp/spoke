@@ -75,8 +75,12 @@ classdef SpokeModel < most.Model
     end
     
     properties (SetAccess=immutable)
-        probeType = 'whisper'; %One of {'whisper' 'imec'}
+        probeType = 'whisper'; %One of {'whisper' 'imec3a' 'imec3b'}.  
     end       
+    
+    properties (SetAccess=private)
+        probeClass = 'whisper'; %One of {'whisper' 'imec'}
+    end
     
     %Following are determined at start of acquisition, via the
     %stimEventClassifyFcn (no arg case). This function must return a structure
@@ -197,7 +201,7 @@ classdef SpokeModel < most.Model
         neuralChansAvailable;
         analogMuxChansAvailable;
         analogSoloChansAvailable;
-        digitalWordChansAvailable; %Words of 16-bits
+        digitalWordChansAvailable; %Words of 16-bits        
     end
     
     properties (SetAccess=protected,Hidden,SetObservable,AbortSet)
@@ -264,18 +268,27 @@ classdef SpokeModel < most.Model
             
             
             %Determine whether using NI (e.g. Whisper) or Imec 
-            assert(ismember(probeType,{'whisper' 'imec'}),'Probe type must be either ''whisper'' or ''imec''');                
+            assert(ismember(probeType,{'whisper' 'imec' 'imec3a' 'imec3b'}),'Probe type must be ''whisper'', ''imec'', ''imec3a'', or ''imec3b''');                
             switch probeType
                 case 'whisper'
                     niORim = 'Ni';
+                    probeClass = 'whisper';
                     assert(isequal(obj.sglParamCache.niEnabled,'true'),'Failed to detect NI device for Whisper probe');
-                case 'imec'
+                case 'imec3a'
                     niORim = 'Im';
+                    probeClass = 'imec';
+                    assert(isequal(obj.sglParamCache.imEnabled,'true'),'Failed to detect Imec device');
+                case {'imec' 'imec3b'}
+                    probeType = 'imec3b';
+                    probeClass = 'imec';
+                    niORim = 'Im';                    
+                    assert(false,'Imec Phase3b probes are not yet supported at this time');
                     assert(isequal(obj.sglParamCache.imEnabled,'true'),'Failed to detect Imec device');
                 otherwise
                     assert(false);
             end
             obj.probeType = probeType;
+            obj.probeClass = probeClass;
             
             %Configure functions & parameters to be NI/Imec generalized            
             obj.sglDeviceFcns.Fetch = str2func(['@Fetch' niORim]);
@@ -1045,7 +1058,7 @@ classdef SpokeModel < most.Model
             obj.hSGL = SpikeGL(obj.sglIPAddress);
             obj.sglParamCache = GetParams(obj.hSGL);
             niORim = 'ni';
-            if isequal(obj.probeType, 'imec')
+            if ismember(obj.probeType, {'imec' 'imec3a' 'imec3b'})
                 niORim = 'im';
             end
             obj.sglParamCache = zlclGeneralizeSpikeGLXParams(obj.sglParamCache, niORim);
@@ -2410,7 +2423,7 @@ classdef SpokeModel < most.Model
                 %Scale waveform from A/D units to target units.
                 switch obj.waveformAmpUnits
                     case 'volts' %apply voltage scaling
-                        if isequal(obj.probeType, 'imec')
+                        if isequal(obj.probeClass, 'imec')
                             channelVoltsPerBitNeural = obj.voltsPerBitNeural(i);
                         else
                             channelVoltsPerBitNeural = obj.voltsPerBitNeural;
@@ -2501,7 +2514,7 @@ classdef SpokeModel < most.Model
                     plotIdx = mod(i-1,obj.PLOTS_PER_TAB) + 1;
                     
                     if perChanThreshold
-                        if isequal(obj.probeType, 'imec')
+                        if isequal(obj.probeClass, 'imec')
                             threshold = obj.thresholdVal * obj.baselineRMS(i) * obj.voltsPerBitNeural(i);
                         else
                             threshold = obj.thresholdVal * obj.baselineRMS(i) * obj.voltsPerBitNeural;
@@ -2758,7 +2771,7 @@ classdef SpokeModel < most.Model
                 %Return gains
                 neuralChanGains = obj.sglParamCache.niMNGain;
                 auxChanGains = obj.sglParamCache.niMAGain;
-            elseif isequal(obj.probeType,'imec')
+            elseif isequal(obj.probeType,'imec3a')
                 pause(5);
                 sglChanCounts = GetAcqChanCounts(obj.hSGL);
                 pause(1);
@@ -2776,7 +2789,8 @@ classdef SpokeModel < most.Model
                 
                 neuralChanGains = [repmat(obj.IMEC_AP_GAIN_DEFAULT,ap,1); repmat(obj.IMEC_LFP_GAIN_DEFAULT,lfp,1)];
                 auxChanGains = [];
-
+            elseif isequal(obj.probeType,'imec3b')
+                %TODO
             else 
                 assert(false);
             end
