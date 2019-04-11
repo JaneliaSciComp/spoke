@@ -6,7 +6,7 @@
 %     a network connection. If omitted, the defaults for host and
 %     port are {'localhost, 4142}.
 %
-function [s] = SpikeGL3a( varargin )
+function [s] = SpikeGL( varargin )
 
     host = 'localhost';
     port = 4142;
@@ -30,6 +30,6 @@ function [s] = SpikeGL3a( varargin )
     s.handle        = -1;
     s.ver           = '';
 
-    s = class( s, 'SpikeGL3a' );
+    s = class( s, 'SpikeGL' );
     s = ChkConn( s );
 end

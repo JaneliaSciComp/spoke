@@ -121,10 +121,18 @@
 %                Returns index of first scan in latest file,
 %                or zero if not available.
 %
+%    n_probes = GetImProbeCount( myobj )
+%
+%                Returns count of enabled IMEC probes.
+%
 %    [SN,type] = GetImProbeSN( myobj, streamID )
 %
 %                Returns serial number string (SN) and integer type
-%                of current IMEC probe.
+%                of selected IMEC probe.
+%
+%    [Vmin,Vmax] = GetImVoltageRange( myobj, streamID )
+%
+%                Returns votlage range of selected IMEC probe.
 %
 %    params = GetParams( myobj )
 %
@@ -184,6 +192,11 @@
 %                Returns 1 if graphs currently sorted in user order.
 %
 %                This query is sent only to the main Graphs window.
+%
+%    dstSample = MapSample( myobj, dstStream, srcSample, srcStream )
+%
+%                Returns sample in dst stream corresponding to
+%                given sample in src stream.
 %
 %    res = Par2( myobj, op, filename )
 %

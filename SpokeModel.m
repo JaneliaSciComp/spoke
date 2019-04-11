@@ -250,7 +250,7 @@ classdef SpokeModel < most.Model
         
         IMEC_AP_GAIN_DEFAULT = 500;
         IMEC_LFP_GAIN_DEFAULT = 250;
-        IMEC_3B_AI_RANGE_MAX = 0.6;
+       %IMEC_3B_AI_RANGE_MAX = 0.6;
         IMEC_3B_SYNC_AUX_BITMASK = 64; % Index of bit in Imec 3b sync word that's available as auxiliary digital signal input
         SPIKE_REFRACTORY_PERIOD_MIN = 1e-3; %Minimum spike refractory period, i.e. fastest spike detection rate to allow. 
     end
@@ -282,6 +282,7 @@ classdef SpokeModel < most.Model
             
             
             %Determine whether using NI (e.g. Whisper) or Imec 
+            probeCount = 1;
             switch probeType
                 case 'whisper'
                     niORim = 'Ni';
@@ -294,8 +295,9 @@ classdef SpokeModel < most.Model
                 case {'imec' 'imec3b' 'imec3b2'}
                     probeType = 'imec3b2';
                     probeClass = 'imec';
-                    niORim = 'Im';                    
-                    %TODO3b: add check that imec probe is present                    
+                    niORim = 'Im';           
+                    probeCount = GetImProbeCount(obj.hSGL);
+                    assert(probeCount > 0,'Failed to detect Imec device');                                       
                 otherwise
                     assert(false);
             end
@@ -328,7 +330,9 @@ classdef SpokeModel < most.Model
                     obj.sampRate = obj.sglParamCache.xxxSampRate;
                     obj.voltsPerBitAux = 1; %Not an analog channel in imec cases
                 case 'imec3b2'
-                    obj.aiRangeMax = obj.IMEC_3B_AI_RANGE_MAX;
+                    [aiRangeMin, aiRangeMax] = GetImVoltageRange(obj.hSGL,0);
+                    assert(abs(aiRangeMin) == aiRangeMax,'Assymetric imec voltage range detected and is not supported');
+                    obj.aiRangeMax = aiRangeMax;
                     obj.sampRate = GetSampleRate(obj.hSGL,0);
                     obj.voltsPerBitAux = 1; %Not an analog channel in imec cases
                 case 'whisper'               
