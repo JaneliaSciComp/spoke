@@ -251,6 +251,7 @@ classdef SpokeModel < most.Model
         IMEC_AP_GAIN_DEFAULT = 500;
         IMEC_LFP_GAIN_DEFAULT = 250;
         IMEC_3B_AI_RANGE_MAX = 0.6;
+        IMEC_3B_SYNC_AUX_BITMASK = 64; % Index of bit in Imec 3b sync word that's available as auxiliary digital signal input
         SPIKE_REFRACTORY_PERIOD_MIN = 1e-3; %Minimum spike refractory period, i.e. fastest spike detection rate to allow. 
     end
     
@@ -1940,7 +1941,13 @@ classdef SpokeModel < most.Model
                 %  stimIdx = find(diff(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)) > (obj.stimStartThreshold / obj.voltsPerBitAux)) == 1; %Should not have off-by-one error -- lowest possible value is fullDataBufferStartIdx+1 (if the second sample crosses threshold)
                 triggerThreshVal = obj.stimStartThreshold / obj.voltsPerBitAux;
                
-                stimIdx = find((diff(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)) > triggerThreshVal) == 1,1); %Fixed - Ed
+                stimChanData = obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx);
+                if isequal(obj.probeType,'imec3b2')
+                    stimChanData = bitand(stimChanData,obj.IMEC_3B_SYNC_AUX_BITMASK);
+                end           
+                
+                stimIdx = find((diff(stimChanData) > triggerThreshVal) == 1,1); %Fixed - Ed
+                
                 testvec = obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx);
                 %dfprintf('stimChanFullDataIdx: %d min data: %g max data: %g\n', stimChanFullDataIdx, min(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)), max(obj.fullDataBuffer(reducedDataBufStartIdx:end,stimChanFullDataIdx)));
                 if ~isempty(stimIdx)
