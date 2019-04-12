@@ -20,7 +20,8 @@ probeNumber = 0; %Default to first detected probe
 if nargin == 0
     ipAddress = detectIPAddress();
 else
-    remoteServer = ischar(varargin{end}) && ~isnan(str2double(varargin{end}(1)));
+    
+    remoteServer = ischar(varargin{end}) && ~isempty(strfind(varargin{end},'.'));
     
     if remoteServer
         ipAddress = varargin{end};
