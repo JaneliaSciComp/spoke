@@ -311,9 +311,13 @@ classdef SpokeModel < most.Model
                 obj.sglDeviceFcns.GetSaveChans = @()GetSaveChans(obj.hSGL,probeNumber);                
                 obj.sglDeviceFcns.GetScanCount = @()GetScanCount(obj.hSGL,probeNumber);
             else
-                obj.sglDeviceFcns.Fetch = str2func(['@Fetch' niORim]);
-                obj.sglDeviceFcns.GetSaveChans = str2func(['@GetSaveChans' niORim]);
-                obj.sglDeviceFcns.GetScanCount = str2func(['@GetScanCount' niORim]);
+                Fetch_ = str2func(['@Fetch' niORim]);
+                GetSaveChans_ = str2func(['@GetSaveChans' niORim]);
+                GetScanCount_ = str2func(['@GetScanCount' niORim]);
+                
+                obj.sglDeviceFcns.Fetch = @(lastMaxReadableScanNum,scansToRead,sglStreamChans)Fetch_(obj.hSGL,lastMaxReadableScanNum,scansToRead,sglStreamChans);
+                obj.sglDeviceFcns.GetSaveChans = @()GetSaveChans_(obj.hSGL);
+                obj.sglDeviceFcns.GetScanCount = @()GetScanCount_(obj.hSGL);                
             end
             obj.sglParamCache = zlclGeneralizeSpikeGLXParams(obj.sglParamCache, niORim);
            
