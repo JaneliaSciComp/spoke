@@ -2430,7 +2430,7 @@ classdef SpokeModel < most.Model
                     %numWaveformsLeftToPlot is the number of waveforms needed to hit obj.waveformsPerPlot
                     %numWaveformsToPlotNow is the number of waveforms to actually plot, after hypothetical clearing assuming all waveforms have been plotted
                     if isequal(obj.waveformsPerPlotClearMode,'all')
-                        numWaveformsLeftToPlot = obj.waveformsPerPlot - obj.lastPlottedWaveformCountSinceClear(i);
+                        numWaveformsLeftToPlot = max(obj.waveformsPerPlot - obj.lastPlottedWaveformCountSinceClear(i),0); %Use max() to set floor of zero for case where waveformsPerPlot has been reduced reduced
                         if numWaveformsLeftToPlot >= numNewWaveforms 
                             %Can plot all the new waveforms without having to clear
                             numWaveformsToPlotNow = numNewWaveforms;
@@ -2448,6 +2448,7 @@ classdef SpokeModel < most.Model
                         numWaveformsToPlotNow = min([obj.waveformsPerPlot, numNewWaveforms]); %Always want to plot up to obj.waveformsPerPlot waveforms
                     end
                     
+                    %Plot the most recent waveforms 
                     startingWaveformIdx = numNewWaveforms - numWaveformsToPlotNow + 1;
                     for j=startingWaveformIdx:numNewWaveforms                                                
                         %Clear past waveforms, as needed
