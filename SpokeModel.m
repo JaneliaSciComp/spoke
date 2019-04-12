@@ -2233,6 +2233,7 @@ classdef SpokeModel < most.Model
         end
         
         function zprvUpdateRasterPlot(obj,chanNewSpikes)
+          
             sampPeriod = 1 / obj.sampRate;
             colorOrder = get(0,'DefaultAxesColorOrder');
             
@@ -2468,24 +2469,35 @@ classdef SpokeModel < most.Model
                 end
                 assert(length(waveform) == length(xData),'Waveform data for chan %d (%d), spike %d not of expected length (%d)\n',i,length(waveform),j,length(xData));
                 
-                %Scale waveform from A/D units to target units.
+                %Scale waveform from A/D units to target units. 
+                %Also: apply baseline mean subtraction (or rely on filter) for all cases where you have the baseline mean computed, so that vertical scale always include the transient 
                 switch obj.waveformAmpUnits
                     case 'volts' %apply voltage scaling
                         if isequal(obj.probeClass, 'imec')
                             channelVoltsPerBitNeural = obj.voltsPerBitNeural(i);
                         else
                             channelVoltsPerBitNeural = obj.voltsPerBitNeural;
-                        end
+                        end                        
+                        
+                        %Always do baselineMeanSubtraction when possible (where RMS & mean are computed)
                         if strcmpi(obj.thresholdType,'volts') || stimulusTriggeredWaveformMode
                             waveform = double(waveform) * channelVoltsPerBitNeural;
                         else
-                            waveform = (double(waveform) - obj.baselineMean(i)) * channelVoltsPerBitNeural; %TODO: verify this mean subtraction is correct for this use case (RMS threshold type, voltage display units, spike-triggered waveform mode), if it arises; it seems to be driven by some practical reality rather than a theoretical necessity
+                            if obj.filterWindow(1) > 0
+                                waveform = double(waveform) * channelVoltsPerBitNeural;
+                            else                                                            
+                                %Currently apply baseline mean subtraction as practically voltage scale is likely to be zero-centered 
+                                %In future, could consider whether baseline mean subtraction is a separate option for this case
+                                waveform = (double(waveform) - obj.baselineMean(i)) * channelVoltsPerBitNeural;
+                            end
                         end
+                        
                     case 'rmsMultiple' %apply per-channel RMS scaling
                         % For rmsMultiple display units, mean-subtraction is always applied (via filter or directly here)
                         if obj.filterWindow(1) > 0
                             waveform = double(waveform) / obj.baselineRMS(i);
                         else
+                            %Baseline mean subtraction seems practically required for displaying in RMS units
                             waveform = (double(waveform) - obj.baselineMean(i)) / obj.baselineRMS(i); %include mean subtraction
                         end
                 end
