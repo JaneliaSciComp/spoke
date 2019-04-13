@@ -1612,7 +1612,6 @@ classdef SpokeModel < most.Model
                 %  Excludes spikes during:
                 %   * 'refractory period'(discarded)
                 %   * final 'post-trigger' time, as spec'd by horizontalRange  (processed during next timer period)
-                
                 if ~stimulusTriggeredWaveformMode
                     if rmsMultipleInitializing %Handle case where no RMS data has been computed yet
                         %obj.fullDataBuffer((obj.refreshPeriodAvgScans+1):end,:) = []; %VVV062812: Is this needed/wanted?
@@ -1626,7 +1625,7 @@ classdef SpokeModel < most.Model
                     else
                         newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum);
                     end
-                end          
+                end       
                 
                 t4 = toc(t0);
                 
@@ -2952,7 +2951,7 @@ maxNumWaveformsApplied = false;
 numChans = length(reducedData);
 newSpikeScanNums = cell(numChans,1);
 
-spikesFoundPerChan = zeros(numChans,1);
+%spikesFoundPerChan = zeros(numChans,1);
 
 if isscalar(thresholdVal)
     thresholdVal = repmat(thresholdVal,numChans,1);
@@ -2962,11 +2961,11 @@ if isscalar(baselineMean)
     baselineMean = repmat(baselineMean,numChans,1);
 end
 
-localspikes = cell(numChans,1);
+%localspikes = cell(numChans,1); %debug-only
 
-david_newSpikeScanNums = cell(numChans,1);
-david_spikesFoundPerChan = zeros(numChans,1);
-david_localspikes = cell(numChans,1);
+% david_newSpikeScanNums = cell(numChans,1);
+% david_spikesFoundPerChan = zeros(numChans,1);
+% david_localspikes = cell(numChans,1);
 
 
 for h=1:numChans
@@ -2980,12 +2979,12 @@ for h=1:numChans
     end
     
     %Find new spikes one at a time, imposing refractory period
-    spikesFound = 0;
+    %spikesFound = 0;
     scansToSearch = size(fullDataBuffer,1) - postSpikeNumScans;
     
-    currIdx = 1;
+    %currIdx = 1;
     %currIdx = abs(horizontalRangeScans(1)); %DEPRECATED. Removed spike detection dependence on horizontalRange; no known justification for this dependence at this time
-    tic;
+    %tic;
     %Find the indices of all spikes when they cross the thresholds
     if thresholdAbsolute %Find crossings above or below absolute threshold level
         diffArray = diff(abs(fullDataBuffer(1:scansToSearch,h) - baselineMean(h)) > abs(thresholdVal(h))); %should this be same logic as below?
@@ -3031,13 +3030,13 @@ for h=1:numChans
         %             validSpikeIdx = validSpikeIdx(1:maxNumSpikes);
         %         end
         
-        spikesFound = length(validSpikeIdx); %Unused I think
+        %spikesFound = length(validSpikeIdx); %Unused I think
         spikeScanNums = bufStartScanNum + validSpikeIdx - 1; %Scan numbers corresponding to the spikes
         newSpikes = ~ismember(spikeScanNums ,recentSpikeScanNums); %Only keep the new spikes
         newSpikeScanNums{h} = [newSpikeScanNums{h} , spikeScanNums( newSpikes )];
-        localspikes{h} = [localspikes{h} , validSpikeIdx( newSpikes )];
-        spikesFoundPerChan(h) = sum(newSpikes);
-        t1=toc();
+%localspikes{h} = [localspikes{h} , validSpikeIdx( newSpikes )]; %debug-only
+        %spikesFoundPerChan(h) = sum(newSpikes);
+        %t1=toc();
     end
 %    tic;
 %     while currIdx < scansToSearch
