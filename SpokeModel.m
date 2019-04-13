@@ -1626,8 +1626,7 @@ classdef SpokeModel < most.Model
                     else
                         newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum);
                     end
-                end                
-
+                end          
                 
                 t4 = toc(t0);
                 
@@ -3001,21 +3000,36 @@ for h=1:numChans
     if numel(crossingThresholdIdx) > 0
         %crossingThresholdIdx contains all spikes, but only want it to contain spikes if they are separated by postSpikeNumScans
         %Seems faster to keep a separate array of which ones to keep rather than deleting as we go
-        tic;
+        
         idxToKeep = false(size(crossingThresholdIdx));
         idxToKeep(1) = true; %The first spike is kept
         i=1;
-        while i<=numel(crossingThresholdIdx)
-            i=find(crossingThresholdIdx>crossingThresholdIdx(i)+postSpikeNumScans,1);
-            idxToKeep(i)=true;
+        
+        crossingsKept = 0;
+        while i<=numel(crossingThresholdIdx) 
+            i=find(crossingThresholdIdx>(crossingThresholdIdx(i)+postSpikeNumScans),1);
+            
+            if isempty(i)
+                break;
+            else
+                idxToKeep(i)=true;
+                crossingsKept = crossingsKept + 1;    
+                
+                if crossingsKept >= maxNumSpikes
+                    maxNumWaveformsApplied = true;
+                    break;
+                end
+
+            end
         end
+        
         validSpikeIdx = crossingThresholdIdx(idxToKeep);%validSpikeIdx contains only spikes separated by postSpikeNumScans
         
-        %Ensure maxNumSpikes isn't exceeded
-        if length(validSpikeIdx) > maxNumSpikes
-            maxNumWaveformsApplied = true;
-            validSpikeIdx = validSpikeIdx(1:maxNumSpikes);
-        end
+        %         %Ensure maxNumSpikes isn't exceeded
+        %         if length(validSpikeIdx) > maxNumSpikes
+        %             maxNumWaveformsApplied = true;
+        %             validSpikeIdx = validSpikeIdx(1:maxNumSpikes);
+        %         end
         
         spikesFound = length(validSpikeIdx); %Unused I think
         spikeScanNums = bufStartScanNum + validSpikeIdx - 1; %Scan numbers corresponding to the spikes
