@@ -22,6 +22,8 @@ classdef SpokeModel < most.Model
         
         filterWindow = [0 inf]; %Frequency range in Hz allowed to pass, using a 1-pole Butterworth bandpass filter
         
+        channelSubsetGroup = 1; %Number of 'channelSubset' -- a batch of 256 channels that are respresented in the tabs
+        
         tabDisplayed = 1; %Number of 'tab' -- a batch of (PLOTS_PER_TAB) channels -- currently diplayed in the spike waveform grid.
         
         displayMode = 'waveform'; %One of {'waveform' 'raster'}. Specifies type of information to display on plot grid.
@@ -240,6 +242,8 @@ classdef SpokeModel < most.Model
     % 3.
     
     properties (Hidden,Constant)
+        CHANNELS_PER_SUBSET_GROUP = 256;
+        MAX_NUM_SUBSET_GROUPS = 3;
         PLOTS_PER_TAB = 32;
         MAX_NUM_TABS = 8;
         
@@ -367,6 +371,7 @@ classdef SpokeModel < most.Model
             obj.zprvInitializeRasterGridLines();
             
             obj.verticalRange = [-obj.aiRangeMax obj.aiRangeMax] / 1000; % Use millivolts for spikes.
+            obj.channelSubsetGroup = 1;
             obj.tabDisplayed = 1;
             
             %Clean-up
@@ -509,6 +514,7 @@ classdef SpokeModel < most.Model
             
             %Side-effects
             obj.zprvResetReducedData();
+            obj.channelSubsetGroup = obj.channelSubsetGroup;
             obj.tabDisplayed = obj.tabDisplayed;
             
         end
@@ -935,7 +941,23 @@ classdef SpokeModel < most.Model
             
             obj.horizontalRangeRaster = val;
         end
-        
+ 
+        function set.channelSubsetGroup(obj,val)
+            obj.validatePropArg('channelSubsetGroup',val);
+            assert(val <= obj.numChannelSubsetGroups,'Value specified (%d) exceeds the number of available channel subset groups (%d)',val,obj.numChannelSubsetGroups);
+            
+            obj.zprvAssertAvailChansConstant();
+            
+            obj.blockTimer = true;
+            
+            try
+                obj.channelSubsetGroup = val;
+                obj.tabDisplayed = 1;
+            catch ME
+                obj.blockTimer = false;
+                ME.rethrow();
+            end
+        end
         
         function set.tabDisplayed(obj,val)
             obj.validatePropArg('tabDisplayed',val);
@@ -949,11 +971,8 @@ classdef SpokeModel < most.Model
                 obj.tabDisplayed = val;
                 dispType = obj.displayMode;
                 
-                %Update tabChanIdxs
-                nnca = numel(obj.neuralChanAcqList); %#ok<*MCSUP>
-                
-                tci = (1:obj.PLOTS_PER_TAB) + (val-1)*obj.PLOTS_PER_TAB;
-                tci(tci > nnca) = [];
+                %Update tabChanIdxs                
+                tci = (obj.channelSubsetGroup-1)*obj.CHANNELS_PER_SUBSET_GROUP + (val-1)*obj.PLOTS_PER_TAB + (1:obj.PLOTS_PER_TAB);
                 obj.tabChanIdxs = tci; 
                 
                 %Clear grid waveform/raster plots
@@ -966,27 +985,8 @@ classdef SpokeModel < most.Model
                 hAxes = obj.displayModeAxes;
                 
                 %Display SpikeGLX channel numbers in accordance to channel map order, if any
-                for i=1:length(tci)
-                    % actualChannelNumber = tci(i) - 1;
-                    
-                    %                     if ~isequal(obj.neuralChanDispOrder, obj.neuralChansAvailable) %TOCHECK: May change when channel mapping is fixed/verified, since neuralChanDispList may be a subset of acquired and/or available channels
-                    %                         %Use channel mapping numbers (if they exist)
-                    %                         tempChannelNumber = obj.neuralChanDispOrder( tci(i) );
-                    %                         if tempChannelNumber ~= tci(i) - 1
-                    %                             channelNumberString = strcat(num2str(tempChannelNumber),' (',num2str(tci(i) - 1),')');
-                    %                             textPosition = [.13 .92];
-                    %                         else
-                    %                             channelNumberString = num2str(tci(i) - 1);
-                    %                             textPosition = [.08 .92];
-                    %                         end
-                    %                     else
-                    %                         %Display with 0-based channel index
-                    %                         tempChannelNumber = tci(i) - 1;
-                    %                         channelNumberString = num2str(tci(i) - 1);
-                    %                         textPosition = [.08 .92];
-                    %                     end                    
-                    
-                    chanLabelString = num2str(obj.neuralChanAcqList(tci(i)));     
+                for i=1:length(tci)               
+                    chanLabelString = num2str(tci(i)-1);     
                     textPosition = [.08 .92];               
                     
                     obj.hChanLabels.(dispType)(i) = text('Parent',hAxes(i),'String',chanLabelString,'HandleVisibility','off','FontWeight','bold','Color','k','Units','normalized','Position',textPosition,'HorizontalAlignment','center');
@@ -3176,6 +3176,7 @@ s.running = struct('Classes','binaryflex','Attributes','scalar');
 s.stimStartChannel = struct('Attributes',{{'integer' 'finite' 'nonnegative'}},'AllowEmpty',1);
 
 s.displayMode   = struct('Options',{{'waveform' 'raster'}});
+s.channelSubsetGroup  = struct('Attributes',{{'scalar' 'finite' 'positive' 'integer'}});
 s.tabDisplayed  = struct('Attributes',{{'scalar' 'finite' 'positive' 'integer'}});
 
 s.thresholdType = struct('Options',{{'volts' 'rmsMultiple'}});

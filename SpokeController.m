@@ -142,6 +142,7 @@ classdef SpokeController < most.Controller;
       end                    
     end
     
+    
     function changedMaxNumWaveformsApplied(obj,~,~)
       
       if obj.hModel.maxNumWaveformsApplied
@@ -151,6 +152,28 @@ classdef SpokeController < most.Controller;
       end
       
     end
+    
+    function changeChannelSubsetGroup(obj,newVal)       
+        try
+            obj.hModel.channelSubsetGroup = newVal; 
+        catch ME
+            obj.changedChannelSubset();
+        end        
+    end
+    
+    function changedChannelSubsetGroup(obj,~,~)                 
+        for i=1:obj.hModel.MAX_NUM_SUBSET_GROUPS
+            if i == obj.hModel.channelSubsetGroup
+              set(obj.hGUIData.SpikeGrid.(sprintf('channelSubsetGroup%dButton',i)),'Value',1);
+              for tab=1:obj.hModel.MAX_NUM_TABS
+                  current_channel_range = (obj.hModel.channelSubsetGroup-1)*obj.hModel.CHANNELS_PER_SUBSET_GROUP + (tab-1)*obj.hModel.PLOTS_PER_TAB + [1,obj.hModel.PLOTS_PER_TAB];
+                  set(obj.hGUIData.SpikeGrid.(sprintf('tbTab%d',tab)),'String',sprint('%d-%d',current_channel_range(1)-1, current_channel_range(2)-1));
+              end
+            else
+              set(obj.hGUIData.SpikeGrid.(sprintf('channelSubsetGroup%dButton',i)),'Value',0);
+            end
+        end      
+    end     
     
     function changeTabDisplayed(obj,newVal)       
         try
@@ -330,6 +353,7 @@ function s = lclInitPropBindings()
   s.displayMode = struct('Callback','changedDisplayMode');
   s.filterWindow = struct('Callback','changedFilterWindow');  
   s.maxNumWaveformsApplied = struct('Callback','changedMaxNumWaveformsApplied');
+  s.channelSubsetGroup = struct('Callback','changedChannelSubsetGroup');    
   s.tabDisplayed = struct('Callback','changedTabDisplayed');    
   s.running = struct('Callback','changedRunning');
   
