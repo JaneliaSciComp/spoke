@@ -22,7 +22,7 @@ function varargout = SpikeGrid(varargin)
 
 % Edit the above text to modify the response to help SpikeGrid
 
-% Last Modified by GUIDE v2.5 28-Dec-2016 20:52:32
+% Last Modified by GUIDE v2.5 28-Aug-2019 19:00:48
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -250,27 +250,6 @@ function tbTab6_Callback(hObject, eventdata, handles)
 % Hint: get(hObject,'Value') returns toggle state of tbTab4
 handles.hController.changeTabDisplayed(6);
 
-
-% --- Executes on button press in tbTab4.
-function tbTab7_Callback(hObject, eventdata, handles)
-% hObject    handle to tbTab4 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of tbTab4
-handles.hController.changeTabDisplayed(7);
-
-
-% --- Executes on button press in tbTab4.
-function tbTab8_Callback(hObject, eventdata, handles)
-% hObject    handle to tbTab4 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hint: get(hObject,'Value') returns toggle state of tbTab4
-handles.hController.changeTabDisplayed(8);
-
-
 % --- Executes on button press in tbShowAllProps.
 function tbShowAllProps_Callback(hObject, eventdata, handles)
 % hObject    handle to tbShowAllProps (see GCBO)
@@ -496,3 +475,79 @@ function mnuViewRasterDisplay_Callback(hObject, eventdata, handles)
 % hObject    handle to mnuViewRasterDisplay (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+
+
+% --- Executes on button press in channelSubsetGroup1Button.
+function channelSubsetGroup1Button_Callback(hObject, eventdata, handles)
+% hObject    handle to channelSubsetGroup1Button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of channelSubsetGroup1Button
+handles.hController.changeChannelSubsetGroup(1);
+
+% --- Executes on button press in channelSubsetGroup2Button.
+function channelSubsetGroup2Button_Callback(hObject, eventdata, handles)
+% hObject    handle to channelSubsetGroup2Button (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of channelSubsetGroup2Button
+handles.hController.changeChannelSubsetGroup(2);
+
+% --- Executes on button press in tbTab7.
+function tbTab7_Callback(hObject, eventdata, handles)
+% hObject    handle to tbTab7 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of tbTab9
+handles.hController.changeTabDisplayed(7);
+
+% --- Executes on button press in tbTab8.
+function tbTab8_Callback(hObject, eventdata, handles)
+% hObject    handle to tbTab8 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of tbTab9
+handles.hController.changeTabDisplayed(8);
+
+% --- Executes on button press in tbTab9.
+function tbTab9_Callback(hObject, eventdata, handles)
+% hObject    handle to tbTab9 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of tbTab9
+handles.hController.changeTabDisplayed(9);
+
+
+% --- Executes on button press in tbTab10.
+function tbTab10_Callback(hObject, eventdata, handles)
+% hObject    handle to tbTab10 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of tbTab10
+handles.hController.changeTabDisplayed(10);
+
+
+% --- Executes on button press in tbTab12.
+function tbTab12_Callback(hObject, eventdata, handles)
+% hObject    handle to tbTab12 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of tbTab12
+handles.hController.changeTabDisplayed(12);
+
+
+% --- Executes on button press in tbTab11.
+function tbTab11_Callback(hObject, eventdata, handles)
+% hObject    handle to tbTab11 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of tbTab11
+handles.hController.changeTabDisplayed(11);
