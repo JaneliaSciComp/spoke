@@ -2848,14 +2848,16 @@ classdef SpokeModel < most.Model
                    lfp = sglChanCounts(2); %Neural channels, filtered for local field potential detection
                    sy = sglChanCounts(3); %Sync channel, digital word(s) of 16 bits.
                    
-                   neural = 0:(ap+lfp-1);
-                   digwords =  neural(end) + (1:sy);
+                   %neural = 0:(ap+lfp-1); % Ignore LFP channels until/unless user-requested
+                   neural = 0:(ap-1);
+                   digwords =  (ap+lfp-1) + (1:sy);
                    
                    %Not supporting these imec channels presently
                    analogmux = [];
                    analogsolo = [];
                    
-                   neuralChanGains = [repmat(obj.IMEC_AP_GAIN_DEFAULT,ap,1); repmat(obj.IMEC_LFP_GAIN_DEFAULT,lfp,1)];
+                   %neuralChanGains = [repmat(obj.IMEC_AP_GAIN_DEFAULT,ap,1); repmat(obj.IMEC_LFP_GAIN_DEFAULT,lfp,1)]; % Ignore LFP channels until/unless user-requested
+                   neuralChanGains = repmat(obj.IMEC_AP_GAIN_DEFAULT,ap,1);
                    auxChanGains = [];            
                otherwise 
                    assert(false);
