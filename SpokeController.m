@@ -157,7 +157,7 @@ classdef SpokeController < most.Controller;
         try
             obj.hModel.channelSubsetGroup = newVal; 
         catch ME
-            obj.changedChannelSubset();
+            obj.changedChannelSubsetGroup();
         end        
     end
     
