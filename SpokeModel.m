@@ -1643,6 +1643,7 @@ classdef SpokeModel < most.Model
                 end
                 
                 znstStoreReducedData(timestampOffsets,bufStartScanNum);
+                t5 = toc(t0);
                 
                 %STAGE 5b: (Raster mode only) Determine & store spike-stimulus associations, and stimulus classifications if applicable
                 if rasterDisplayMode
@@ -1651,7 +1652,7 @@ classdef SpokeModel < most.Model
                     end
                     chanNewSpikes = znstAssociateSpikesToStimuli(); %Tag spike data with stimulus/event info, as needed/possible
                 end
-                t5 = toc(t0);
+                t6 = toc(t0);
                 
                 %STAGE 6: Plot newly detected spike(s) that were stored for display - will always be enough post data, and generally enough pre-data except for spikes at very beginning
                 if rasterDisplayMode
@@ -1667,14 +1668,14 @@ classdef SpokeModel < most.Model
                     obj.waveformWrap(end+1) = newWaveformWrapVal;
                 end
                 
-                t6 = toc(t0);
+                t7 = toc(t0);
                 
                 %STAGE 7: Update current baseline stats values (mean & RMS), if needed
                 if (rmsMultipleActive || obj.filterWindow(1) == 0) && ...
                         (obj.bufScanNumEnd - obj.baselineRMSLastScan) > obj.baselineStatsRefreshPeriodScans % enough time has elapsed since last RMS sampling
                     znstUpdateBaselineStats(newSpikeScanNums,bufStartScanNum);
                 end
-                t7 = toc(t0);
+                t8 = toc(t0);
                 
                 %Housekeeping: reset the fullDataBuffer
                 %TODO: Review moving this to fullDataBuffer formation step above in STAGE 3
@@ -1691,7 +1692,7 @@ classdef SpokeModel < most.Model
                     fprintf(2,'Error contracting the data buffer, which has size: %s\n',mat2str(size(obj.fullDataBuffer)));
                     ME.rethrow();
                 end
-                t8 = toc(t0);
+                t9 = toc(t0);
                 
                 %fprintf('Total Time (%d scans of %d channels): %g\tRead: %g\tMeanSubtract: %g\tFilter: %g\tDetect: %g\tStore: %g\tStimTag: %g\tPlot: %g \t Mean Compute: %g\tContraction: %g\n',scansToRead,size(newData,2),t8*1000,t1*1000,(t2-t1)*1000,(t3-t2)*1000,(t4-t3)*1000,(t5-t4)*1000,(t6-t5)*1000,(t7-t6)*1000,(t8-t7)*1000,(t9-t8)*1000);
                 readTime = 1000 * t1;
