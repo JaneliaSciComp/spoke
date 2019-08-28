@@ -1783,11 +1783,14 @@ classdef SpokeModel < most.Model
                 
                 try
                     
+                    if obj.waveformDisplay
+                        chansToStore = obj.neuralChanAcqList(obj.tabChanIdxs);
+                    else
+                        chansToStore = obj.neuralChanAcqList;
+                    end
                     
-                    for h=1:numel(obj.neuralChanAcqList)
-                        %TODO: Where possible, short-circuit storage for
-                        %channels not being displayed, to reduce processing
-                        %time
+                    
+                    for h=1:(chansToStore+1)
                         
                         if stimulusTriggeredWaveformMode
                             timestampOffsets_ = timestampOffsets;
