@@ -72,6 +72,7 @@ classdef SpokeModel < most.Model
     end
     
     properties (Dependent)
+        numChannelSubsetGroups;
         numTabs;
         stimEventCount; %Count of stimuli that have been detected since start/restart/rollover at current stimEventTypesDisplayed (when displayMode='raster')
     end
@@ -944,7 +945,7 @@ classdef SpokeModel < most.Model
  
         function set.channelSubsetGroup(obj,val)
             obj.validatePropArg('channelSubsetGroup',val);
-            assert(val <= obj.numChannelSubsetGroups,'Value specified (%d) exceeds the number of available channel subset groups (%d)',val,obj.numChannelSubsetGroups);
+            assert(val <= obj.MAX_NUM_SUBSET_GROUPS,'Value specified (%d) exceeds the number of available channel subset groups (%d)',val,obj.MAX_NUM_SUBSET_GROUPS);
             
             obj.zprvAssertAvailChansConstant();
             

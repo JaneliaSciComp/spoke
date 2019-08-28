@@ -167,7 +167,7 @@ classdef SpokeController < most.Controller;
               set(obj.hGUIData.SpikeGrid.(sprintf('channelSubsetGroup%dButton',i)),'Value',1);
               for tab=1:obj.hModel.MAX_NUM_TABS
                   current_channel_range = (obj.hModel.channelSubsetGroup-1)*obj.hModel.CHANNELS_PER_SUBSET_GROUP + (tab-1)*obj.hModel.PLOTS_PER_TAB + [1,obj.hModel.PLOTS_PER_TAB];
-                  set(obj.hGUIData.SpikeGrid.(sprintf('tbTab%d',tab)),'String',sprint('%d-%d',current_channel_range(1)-1, current_channel_range(2)-1));
+                  set(obj.hGUIData.SpikeGrid.(sprintf('tbTab%d',tab)),'String',sprintf('%d-%d',current_channel_range(1)-1, current_channel_range(2)-1));
               end
             else
               set(obj.hGUIData.SpikeGrid.(sprintf('channelSubsetGroup%dButton',i)),'Value',0);
