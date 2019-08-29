@@ -1129,7 +1129,14 @@ classdef SpokeModel < most.Model
             end
             
             %Open SpikeGL connection & updateparameter cache
-            obj.hSGL = SpikeGL(obj.sglIPAddress);
+            %obj.hSGL = SpikeGL(obj.sglIPAddress);
+            switch obj.probeType
+                case 'imec3a'
+                    obj.hSGL = SpikeGL3a(obj.sglIPAddress);
+                otherwise
+                    obj.hSGL = SpikeGL(obj.sglIPAddress);                
+            end
+            
             obj.sglParamCache = GetParams(obj.hSGL);
             niORim = 'ni';
             if ismember(obj.probeType, {'imec' 'imec3a' 'imec3b2'})
@@ -2909,7 +2916,7 @@ classdef SpokeModel < most.Model
         
         function zprvApplyStreamChansAndChanMap(obj)         
  
-            obj.sglStreamChans = obj.neuralChansAvailable;  % Temp fix; SpikeGLX always streams all channels
+            obj.sglStreamChans = obj.neuralChansAvailable; % Temp fix; SpikeGLX always streams all channels
             
             obj.neuralChanAcqList = intersect(obj.sglStreamChans,obj.neuralChansAvailable);
             
