@@ -1032,7 +1032,7 @@ classdef SpokeModel < most.Model
                 t = 1000*t;
                 c = num2cell([t(1) diff(t)]);
                
-                fprintf('Total time: %d Splits: %d - %d - %d - %d - %d - %d\n',t(6),c{:});               
+                %fprintf('Total time: %d Splits: %d - %d - %d - %d - %d - %d\n',t(6),c{:});               
                                     
             catch ME
                 fprintf('Exception: %s at line %d of file %s\n',ME.message,ME.stack(1).line,ME.stack(1).file);                
