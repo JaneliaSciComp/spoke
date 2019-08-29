@@ -961,7 +961,13 @@ classdef SpokeModel < most.Model
                 t(1) = toc(t0);
 
                 %Clear grid waveform/raster plots
-                obj.zprvClearPlots({obj.displayMode 'psth'},false); %Don't reuse existing threshold lines
+                switch obj.displayMode
+                    case 'waveform'
+                        obj.zprvClearPlots({obj.displayMode},false); %Don't reuse existing threshold lines
+                    case 'raster'
+                        obj.zprvClearPlots({obj.displayMode 'psth'},false); %Don't reuse existing threshold lines
+                end
+                  
                 t(2) = toc(t0);
                 
                 %Update plot channel labels %REVIEW: delete/re-create seems unnecessarily slow    
@@ -2743,10 +2749,10 @@ classdef SpokeModel < most.Model
             
             for i=1:length(displaysToClear)
                 %for j=1:min(obj.PLOTS_PER_TAB,numel(obj.hThresholdLines{1}))
+                displayToClear = displaysToClear{i};
+                
                 for j=1:min(obj.PLOTS_PER_TAB,numel(obj.neuralChanAcqList))
-                    
-                    displayToClear = displaysToClear{i};
-                    
+                                        
                     switch displayToClear
                         case 'waveform'
                             
