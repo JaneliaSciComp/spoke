@@ -2875,7 +2875,7 @@ classdef SpokeModel < most.Model
         
         function zprvApplyStreamChansAndChanMap(obj)         
  
-            obj.sglStreamChans = obj.sglDeviceFcns.GetSaveChans(); %save channels as specified in SpikeGLX.
+            obj.sglStreamChans = obj.neuralChansAvailable;  % Temp fix; SpikeGLX always streams all channels
             
             obj.neuralChanAcqList = intersect(obj.sglStreamChans,obj.neuralChansAvailable);
             
