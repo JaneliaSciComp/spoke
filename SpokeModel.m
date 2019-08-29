@@ -132,10 +132,10 @@ classdef SpokeModel < most.Model
         
         numActiveTabs;
         
-        sglStreamChans; %SpikeGLX streamed channels. These are the channels (both neural and non-neural channels) that SpikeGLX saves and transfers to Spoke. Specified in teh SpikeGLX "Save" tab.        
+        sglStreamChans; %SpikeGLX streamed channels. These include all SpikeGLX channels (both neural and non-neural) irrespective of any save or display subsetting configured in SpikeGLX.        
        
-        neuralChanAcqList; %Ascending list of neural chans within SpikeGLX save chans (sglStreamChans).
-        neuralChanDispList; %Ordered list of neural chans within SpikeGLX save chans (sglStreamChans), specifying display ordering. 
+        neuralChanAcqList; %Ascending list of neural chans within sglStreamChans.
+        neuralChanDispList; %Ordered list of neural chans within sglStreamChans, specifying display ordering. NOTE: channel map/reordering functionality is not currently supported
         auxChanProcList; %Ascending list of auxiliary chans (TOCHECK: restricted to within SpikeGLX save chans?)
         
         baselineRMS; %Array of RMS values, one per channel, computed from all non-spike-window scans from within last baselineRMSTime
@@ -323,6 +323,7 @@ classdef SpokeModel < most.Model
            
             %Immutable prop initializations
             [obj.neuralChansAvailable, obj.analogMuxChansAvailable, obj.analogSoloChansAvailable, obj.digitalWordChansAvailable,neuralChanGains,auxChanGains] = obj.zprvGetAvailAcqChansAndGains(probeNumber);
+            obj.sglStreamChans = sort([obj.neuralChansAvailable obj.analogMuxChansAvailable obj.analogSoloChansAvailable obj.digitalWordChansAvailable]); % SpikeGLX always streams all channels, regardless of save/display settings in SpikeGLX
              
             %Configure main timer functions for live processing
             obj.hTimer = timer('Name','Spoke Waveform Grid Timer','ExecutionMode','fixedRate','TimerFcn',@obj.zcbkTimerFcn,'BusyMode','queue','StartDelay',0.1);
@@ -354,7 +355,7 @@ classdef SpokeModel < most.Model
             obj.zprvResetReducedData();
             
             %Initialize a default display for appearances (some aspects gets overridden by processing on start())
-            obj.zprvApplyStreamChansAndChanMap();
+            obj.zprvApplyNeuralChansAndChanMap();
             
             nnca = numel(obj.neuralChanAcqList);
             obj.hThresholdLines = repmat({ones(nnca,1) * -1},2,1);
@@ -1153,10 +1154,10 @@ classdef SpokeModel < most.Model
             
             hTimers = obj.hTimer;
             
-            %Apply stream channels and channel map(s), as specified in SpikeGLX
+            %Apply neural channels and channel map(s), as specified in SpikeGLX
             %TODO: Consider to allow further subsetting by Spoke user, to give faster Spoke processing
             obj.zprvAssertAvailChansConstant();
-            obj.zprvApplyStreamChansAndChanMap();
+            obj.zprvApplyNeuralChansAndChanMap();
             
             %Reset various state vars -- RMS/mean, filterCondition, spike data, etc
             obj.zprvResetAcquisition();
@@ -2914,10 +2915,10 @@ classdef SpokeModel < most.Model
             
         end
         
-        function zprvApplyStreamChansAndChanMap(obj)         
+        function zprvApplyNeuralChansAndChanMap(obj)         
  
-            obj.sglStreamChans = obj.neuralChansAvailable; % Temp fix; SpikeGLX always streams all channels
-            
+            %obj.sglStreamChans = obj.sglDeviceFcns.GetSaveChans(); % Removed, we're no longer restricting processing to just the saved channels
+
             obj.neuralChanAcqList = intersect(obj.sglStreamChans,obj.neuralChansAvailable);
             
             if isequal(obj.probeType,'imec3b2') || isempty(obj.sglParamCache.snsNiChanMapFile)
