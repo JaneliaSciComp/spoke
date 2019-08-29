@@ -952,12 +952,12 @@ classdef SpokeModel < most.Model
                 dispType = obj.displayMode;
 
                 %Update tabChanIdxs
-                nnca = numel(obj.neuralChanAcqList); %#ok<*MCSUP>
+                nnca = numel(obj.neuralChanAcqList); 
                 
                 tci = (1:obj.PLOTS_PER_TAB) + (val-1)*obj.PLOTS_PER_TAB;
-                tci(tci > nnca) = [];
+                %tci(tci > nnca) = []; 
                 
-                obj.tabChanIdxs = tci; 
+                obj.tabChanIdxs = tci(tci <= nnca); %Store only the tab chan indices corresponding to available neural channels
                 
                 t(1) = toc(t0);
 
@@ -980,7 +980,7 @@ classdef SpokeModel < most.Model
                 t(3)=toc(t0);
                                 
                 %Display SpikeGLX channel numbers in accordance to channel map order, if any
-                for i=1:length(tci)
+                for i=1:obj.PLOTS_PER_TAB
                     % actualChannelNumber = tci(i) - 1;
                     
                     %                     if ~isequal(obj.neuralChanDispOrder, obj.neuralChansAvailable) %TOCHECK: May change when channel mapping is fixed/verified, since neuralChanDispList may be a subset of acquired and/or available channels
@@ -1000,7 +1000,8 @@ classdef SpokeModel < most.Model
                     %                         textPosition = [.08 .92];
                     %                     end                    
                     
-                    chanLabelString = num2str(obj.neuralChanAcqList(tci(i)));     
+                    %chanLabelString = num2str(obj.neuralChanAcqList(tci(i)));    
+                    chanLabelString = num2str(tci(i)-1); % Apply label irrespective of whether neural channel is available
                     textPosition = [.08 .92];               
                     
                     % REVIEW: delete/re-create seems unnecessarily slow                    
