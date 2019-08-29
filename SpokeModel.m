@@ -945,26 +945,39 @@ classdef SpokeModel < most.Model
             
             obj.blockTimer = true;
             
+            t0 = tic;
             try
                 obj.tabDisplayed = val;
                 dispType = obj.displayMode;
-                
+
                 %Update tabChanIdxs
                 nnca = numel(obj.neuralChanAcqList); %#ok<*MCSUP>
                 
                 tci = (1:obj.PLOTS_PER_TAB) + (val-1)*obj.PLOTS_PER_TAB;
                 tci(tci > nnca) = [];
+                
                 obj.tabChanIdxs = tci; 
                 
+                t(1) = toc(t0);
+
                 %Clear grid waveform/raster plots
-                obj.zprvClearPlots({obj.displayMode 'psth'},false); %Don't reuse existing threshold lines
+                switch obj.displayMode
+                    case 'waveform'
+                        obj.zprvClearPlots({obj.displayMode},false); %Don't reuse existing threshold lines
+                    case 'raster'
+                        obj.zprvClearPlots({obj.displayMode 'psth'},false); %Don't reuse existing threshold lines
+                end
+                  
+                t(2) = toc(t0);
                 
-                %Update plot channel labels
-                most.idioms.deleteHandle(obj.hChanLabels.(dispType));
-                most.idioms.deleteHandle(obj.hChanLabels.psth);
+                %Update plot channel labels %REVIEW: delete/re-create seems unnecessarily slow    
+                initLabels = isempty(obj.hChanLabels.(dispType)) || isempty(obj.hChanLabels.psth);
+                %most.idioms.deleteHandle(obj.hChanLabels.(dispType));
+                %most.idioms.deleteHandle(obj.hChanLabels.psth);
                 
                 hAxes = obj.displayModeAxes;
-                
+                t(3)=toc(t0);
+                                
                 %Display SpikeGLX channel numbers in accordance to channel map order, if any
                 for i=1:length(tci)
                     % actualChannelNumber = tci(i) - 1;
@@ -989,20 +1002,41 @@ classdef SpokeModel < most.Model
                     chanLabelString = num2str(obj.neuralChanAcqList(tci(i)));     
                     textPosition = [.08 .92];               
                     
-                    obj.hChanLabels.(dispType)(i) = text('Parent',hAxes(i),'String',chanLabelString,'HandleVisibility','off','FontWeight','bold','Color','k','Units','normalized','Position',textPosition,'HorizontalAlignment','center');
-                    obj.hChanLabels.psth(i) = text('Parent',obj.hPSTHs(i),'String',chanLabelString,'HandleVisibility','off','FontWeight','bold','Color','k','Units','normalized','Position',textPosition,'HorizontalAlignment','center');
+                    % REVIEW: delete/re-create seems unnecessarily slow                    
+                    %obj.hChanLabels.(dispType)(i) = text('Parent',hAxes(i),'String',chanLabelString,'HandleVisibility','off','FontWeight','bold','Color','k','Units','normalized','Position',textPosition,'HorizontalAlignment','center');
+                    %obj.hChanLabels.psth(i) = text('Parent',obj.hPSTHs(i),'String',chanLabelString,'HandleVisibility','off','FontWeight','bold','Color','k','Units','normalized','Position',textPosition,'HorizontalAlignment','center');
+                    
+                    if initLabels
+                        c = {'Parent',hAxes(i),'String',chanLabelString,'HandleVisibility','off','FontWeight','bold','Color','k','Units','normalized','Position',textPosition,'HorizontalAlignment','center'};
+                        obj.hChanLabels.(dispType)(i) = text(c{:});
+                        obj.hChanLabels.psth(i) = text(c{:});
+                    else
+                        set(obj.hChanLabels.(dispType)(i),'String',chanLabelString);
+                        set(obj.hChanLabels.psth(i),'String',chanLabelString);
+                    end             
+                    
                 end
+                t(4) = toc(t0);
                 
                 %Update threshold lines/raster plots, as appropriate
                 if strcmpi(obj.displayMode,'raster')
                     obj.zprvUpdateRasterPlot();
                 end
+                t(5) = toc(t0);
                 
                 drawnow expose update;
-                
+                t(6) = toc(t0);
                 obj.blockTimer = false;
                 
+
+                t = 1000*t;
+                c = num2cell([t(1) diff(t)]);
+               
+                fprintf('Total time: %d Splits: %d - %d - %d - %d - %d - %d\n',t(6),c{:});               
+                                    
             catch ME
+                fprintf('Exception: %s at line %d of file %s\n',ME.message,ME.stack(1).line,ME.stack(1).file);                
+
                 obj.blockTimer = false;
                 ME.rethrow();
             end
@@ -2715,10 +2749,10 @@ classdef SpokeModel < most.Model
             
             for i=1:length(displaysToClear)
                 %for j=1:min(obj.PLOTS_PER_TAB,numel(obj.hThresholdLines{1}))
+                displayToClear = displaysToClear{i};
+                
                 for j=1:min(obj.PLOTS_PER_TAB,numel(obj.neuralChanAcqList))
-                    
-                    displayToClear = displaysToClear{i};
-                    
+                                        
                     switch displayToClear
                         case 'waveform'
                             
