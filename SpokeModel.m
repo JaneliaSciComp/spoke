@@ -178,9 +178,9 @@ classdef SpokeModel < most.Model
         stimEventCount_; %Struct var containing stimEventCount value for each of the stimEventTypes_
         
         bmarkReadTimeStats = zeros(3,1); %Array of [mean std n]
-        bmarkPreProcessTimeStats = zeros(3,1);; %Array of [mean std n]
-        bmarkPlotTimeStats = zeros(3,1);; %Array of [mean std n]
-        bmarkPostProcessTimeStats = zeros(3,1);; %Array of [mean std n]
+        bmarkPreProcessTimeStats = zeros(3,1); %Array of [mean std n]
+        bmarkPlotTimeStats = zeros(3,1); %Array of [mean std n]
+        bmarkPostProcessTimeStats = zeros(3,1); %Array of [mean std n]
         
         %waveformWrap/partialWaveformBuffer props handle edge-cases in stim-triggered waveform mode. they could potentially be used for spike-triggered waveform mode.
         waveformWrap = []; %waveform detected towards end of timer processing period; specifies number of samples in the next processing period needed to complete the waveform
@@ -705,12 +705,12 @@ classdef SpokeModel < most.Model
         function set.verticalRange(obj,val)
             obj.validatePropArg('verticalRange',val);
             
-            if strcmpi(obj.waveformAmpUnits,'volts');
-                aiRangeMax = obj.aiRangeMax;
-                if any(abs(val) > 1.1 * aiRangeMax)
+            if strcmpi(obj.waveformAmpUnits,'volts')
+                arm = obj.aiRangeMax;
+                if any(abs(val) > 1.1 * arm)
                     warning('Specified range exceeded input channel voltage range by greater than 10% -- spike amplitude axis limits clamped');
-                    val = min(val,1.1 * aiRangeMax);
-                    val = max(val,-1.1 * aiRangeMax);
+                    val = min(val,1.1 * arm);
+                    val = max(val,-1.1 * arm);
                 end
             end
             
@@ -734,7 +734,7 @@ classdef SpokeModel < most.Model
             
             %Ensure value does not exceed processing refresh period
             dval = diff(val);
-            f_samp = obj.sampRate;
+            f_samp = obj.sampRate; %#ok<*MCSUP>
             assert(dval > 0,'Horizontal range must be specified from minimum to maximum');
             assert(ceil(dval * f_samp) < floor(f_samp/obj.refreshRate),'horizontalRange must be shorter than the processing refresh period');
             
@@ -1525,7 +1525,7 @@ classdef SpokeModel < most.Model
     %% HIDDEN METHODS
     methods (Hidden)
         
-        function zcbkTimerFcn(obj,src,evnt)
+        function zcbkTimerFcn(obj,~,~)
             if obj.blockTimer
                 return;
             end
@@ -1560,8 +1560,7 @@ classdef SpokeModel < most.Model
                 stimulusMode = ~isempty(obj.stimStartChannel) && ~isempty(obj.stimStartThreshold);
                 stimulusTriggeredWaveformMode = strcmpi(obj.displayMode,'waveform') && stimulusMode;
                 
-                sampRate = obj.sampRate;
-                sampPeriod = 1 / sampRate;
+                sampPeriod = 1 / obj.sampRate;
                 
                 %Handle case of no new data
                 if obj.maxReadableScanNum == obj.lastMaxReadableScanNum %no new data
@@ -1584,7 +1583,7 @@ classdef SpokeModel < most.Model
                 %dfprintf('obj.maxReadableScanNum: %d     obj.lastMaxReadableScanNum: %d\n',obj.maxReadableScanNum,obj.lastMaxReadableScanNum);
                 scansToRead_ = obj.maxReadableScanNum - obj.lastMaxReadableScanNum;
                 
-                meanScansPerTimerTick = sampRate / obj.refreshRate;
+                meanScansPerTimerTick = obj.sampRate / obj.refreshRate;
                 scansToRead = min(scansToRead_, round(2  * meanScansPerTimerTick));
                 
                 if scansToRead < scansToRead_
