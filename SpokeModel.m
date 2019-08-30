@@ -244,6 +244,8 @@ classdef SpokeModel < most.Model
         MAX_NUM_TABS = 12;
         
         INIT_RMS_THRESHOLD = 10; %Initial rmsMultiple to use when detecting spikes to exclude from initial RMS value determination
+        RMS_REFRESH_PERIOD_FRACTION = 0.1; %Fraction of refresh period to use for RMS/Mean computation
+        
         RASTER_DISP_STIM_RANGE_INCREMENT_FRACTION = 0.85; %fraction of verticalRangeRasterInfIncrement which must be reached before display range is auto-incremented.
         
         SGL_BITS_PER_SAMPLE = 16; %A constant from SpikeGLX currently; should perhaps update SpikeGL to pull this from the DAQmx API
@@ -252,7 +254,7 @@ classdef SpokeModel < most.Model
         IMEC_LFP_GAIN_DEFAULT = 250;
        %IMEC_3B_AI_RANGE_MAX = 0.6;
         IMEC_3B_SYNC_AUX_BITMASK = 64; % Index of bit in Imec 3b sync word that's available as auxiliary digital signal input
-        SPIKE_REFRACTORY_PERIOD_MIN = 1e-3; %Minimum spike refractory period, i.e. fastest spike detection rate to allow. 
+        SPIKE_REFRACTORY_PERIOD_MIN = 1e-3; %Minimum spike refractory period, i.e. fastest spike detection rate to allow.                 
     end
     
     %% CONSTRUCTOR/DESTRUCTOR
@@ -1736,7 +1738,7 @@ classdef SpokeModel < most.Model
                     ME.rethrow();
                 end
                 t9 = toc(t0);
-                
+                                
                 %fprintf('Total Time (%d scans of %d channels): %g\tRead: %g\tMeanSubtract: %g\tFilter: %g\tDetect: %g\tStore: %g\tStimTag: %g\tPlot: %g \t Mean Compute: %g\tContraction: %g\n',scansToRead,size(newData,2),t8*1000,t1*1000,(t2-t1)*1000,(t3-t2)*1000,(t4-t3)*1000,(t5-t4)*1000,(t6-t5)*1000,(t7-t6)*1000,(t8-t7)*1000,(t9-t8)*1000);
                 readTime = 1000 * t1;
                 procTimePre = 1000 * (t5-t1);
@@ -2162,7 +2164,18 @@ classdef SpokeModel < most.Model
                 
                 %newRmsData = cell(numDispChans,1);
                 %batchLength = zeros(numDispChans,1);
-                rmsDataIdxs = {1:(size(obj.fullDataBuffer,1)-obj.horizontalRangeScans(2))};
+                
+                
+                %rmsDataIdxs = {1:(size(obj.fullDataBuffer,1)-obj.horizontalRangeScans(2))};
+                
+                fullDataSize = size(obj.fullDataBuffer,1);
+                rmsDataSize = min(  round(obj.RMS_REFRESH_PERIOD_FRACTION * fullDataSize),...
+                                    fullDataSize - obj.horizontalRangeScans(2));
+                                
+                
+                %rmsDataIdxs = {1:(size(obj.fullDataBuffer,1)-obj.horizontalRangeScans(2))};
+                rmsDataIdxs = {1:rmsDataSize};
+                
                 rmsDataIdxs = repmat(rmsDataIdxs,numNeuralChans,1);
                 
                 firstPassMode = isempty(newSpikeScanNums); %Handle first pass at RMS detection, when there are no detected spikes yet
@@ -2231,6 +2244,7 @@ classdef SpokeModel < most.Model
             
             if strcmpi(obj.thresholdType,'rmsMultiple')
                 if obj.baselineRMSLastScan == 0 %No RMS data has been computed yet
+                    fprintf('First RMS computation. INIT_RMS_THRESHOLD: %g\n',obj.INIT_RMS_THRESHOLD);
                     %newSpikeScanNums = cell(numDispChans,1);
                     threshVal = obj.baselineRMS * obj.INIT_RMS_THRESHOLD; %Use pre-set RMS multiplier for first buffer
                 else
