@@ -1660,13 +1660,9 @@ classdef SpokeModel < most.Model
                     if rmsMultipleInitializing %Handle case where no RMS data has been computed yet
                         %obj.fullDataBuffer((obj.refreshPeriodAvgScans+1):end,:) = []; %VVV062812: Is this needed/wanted?
                         
-                        tt0 = tic;
                         znstUpdateBaselineStats([],[]); %Compute rms/mean without spikes
-                        tt1 = toc(tt0);
                         [newSpikeScanNums,thresholdMultiples] = zprvDetectNewSpikes(obj,bufStartScanNum); %Detect spikes using rmsMultiple=obj.INIT_RMS_THRESHOLD
-                        tt2 = toc(tt0);
                         znstUpdateBaselineStats(newSpikeScanNums,bufStartScanNum); %Recompute a rms value with, if anything, excess spike exclusion
-                        tt3 = toc(tt0);
                         %newSpikeScanNums = cell(numDispChans,1); %Don't plot/store these spikes, though
                         %newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum);                        
 
@@ -1676,10 +1672,6 @@ classdef SpokeModel < most.Model
                                 newSpikeScanNums{i}(badThresholdIdxs) = [];
                             end
                         end
-                        
-                        tt4 = toc(tt0);
-                        
-                        fprintf('tt1: %g tt2: %g tt3: %g tt4: %g\n',tt1,tt2-tt1,tt3-tt2,tt4-tt3);
                         
                     else
                         newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum);
