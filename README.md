@@ -1,5 +1,5 @@
 # Spoke
-Spoke is a MATLAB app for live selective display of neural data from high-channel-count recording systems. It offers multiple experimenter-optimized display modes based on data reduction of high-channel-count data streams. It currently supports the Whisper and Neurpoixels (Phase 3A and 3b) extracellular recording systems steered by the [Harris Lab](https://www.janelia.org/lab/harris-lab) at HHMI/Janelia Research Campus.  
+Spoke is a MATLAB app for live selective display of neural data from high-channel-count recording systems. It offers multiple experimenter-optimized display modes based on data reduction of high-channel-count data streams. It currently supports the Whisper and Neuropixels (Phase 3A and 3b) extracellular recording systems steered by the [Harris Lab](https://www.janelia.org/lab/harris-lab) at HHMI/Janelia Research Campus.  
 
 Spoke is developed & maintained by the Scientific Computing team at HHMI/Janelia, under the auspices of the Harris Lab. 
 
@@ -12,9 +12,6 @@ The active beta version can be accessed from the [master branch](https://github.
 * SpikeGLX Software (Release 20190327 or later, accessed from [here](http://billkarsh.github.io/SpikeGLX)).
 * [MATLAB](https://www.mathworks.com/downloads) (R2015b or later; R2019a recommended for fastest performance)
 * MATLAB [Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
-
-## Hardware Support
-* Whisper probes
 
 ## Launching Spoke
 1. Launch SpikeGLX  
