@@ -4,15 +4,13 @@ Spoke is a MATLAB app for live selective display of neural data from high-channe
 Spoke is developed & maintained by the Scientific Computing team at HHMI/Janelia, under the auspices of the Harris Lab. 
 
 ## Release Information
-The active version is [v0.9-beta](https://github.com/JaneliaSciComp/spoke/releases/tag/untagged-0d888cd5aea2c3e8fad1) (coming soon!).
-
-Seeking early adopters. Active users of Whisper probes interested to use Spoke are encouraged to contact [David Ackerman](mailto:ackermand@janelia.hhmi.org) to identify as a potential early adopter. Early adopter requirements will be actively considered for inclusion in the planned v1.0 release later this year. 
+The active beta version can be accessed from the [master branch](https://github.com/JaneliaSciComp/spoke/tree/master). A v1.0 release is expected soon. 
 
 ## System Requirements
 
 * Windows 64-bit operating system (7, 8.1, 10)
-* SpikeGLX Software (most recent phase3A [release](http://billkarsh.github.io/SpikeGLX)).
-* [MATLAB](https://www.mathworks.com/downloads) (R2015b or later)
+* SpikeGLX Software (Release 20190327 or later from [here](http://billkarsh.github.io/SpikeGLX)).
+* [MATLAB](https://www.mathworks.com/downloads) (R2015b or later; R2019a recommended for fastest performance)
 * MATLAB [Signal Processing Toolbox](https://www.mathworks.com/products/signal.html)
 
 ## Launching Spoke
