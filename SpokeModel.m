@@ -1231,9 +1231,7 @@ classdef SpokeModel < most.Model
             %Start timer(s)
             start(hTimers);
             
-            obj.running = true;
-            
-            disp('started');
+            obj.running = true;            
             
         end
         
