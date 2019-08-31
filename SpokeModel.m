@@ -1660,12 +1660,27 @@ classdef SpokeModel < most.Model
                     if rmsMultipleInitializing %Handle case where no RMS data has been computed yet
                         %obj.fullDataBuffer((obj.refreshPeriodAvgScans+1):end,:) = []; %VVV062812: Is this needed/wanted?
                         
+                        tt0 = tic;
                         znstUpdateBaselineStats([],[]); %Compute rms/mean without spikes
-                        newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum); %Detect spikes using rmsMultiple=obj.INIT_RMS_THRESHOLD
+                        tt1 = toc(tt0);
+                        [newSpikeScanNums,thresholdMultiples] = zprvDetectNewSpikes(obj,bufStartScanNum); %Detect spikes using rmsMultiple=obj.INIT_RMS_THRESHOLD
+                        tt2 = toc(tt0);
                         znstUpdateBaselineStats(newSpikeScanNums,bufStartScanNum); %Recompute a rms value with, if anything, excess spike exclusion
-                        
+                        tt3 = toc(tt0);
                         %newSpikeScanNums = cell(numDispChans,1); %Don't plot/store these spikes, though
-                        newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum);
+                        %newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum);                        
+
+                        for i=1:length(newSpikeScanNums)
+                            badThresholdIdxs = thresholdMultiples{i} < obj.thresholdVal;
+                            if ~isempty(newSpikeScanNums{i})
+                                newSpikeScanNums{i}(badThresholdIdxs) = [];
+                            end
+                        end
+                        
+                        tt4 = toc(tt0);
+                        
+                        fprintf('tt1: %g tt2: %g tt3: %g tt4: %g\n',tt1,tt2-tt1,tt3-tt2,tt4-tt3);
+                        
                     else
                         newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum);
                     end
@@ -1738,7 +1753,7 @@ classdef SpokeModel < most.Model
                 end
                 t9 = toc(t0);
                                 
-                %fprintf('Total Time (%d scans of %d channels): %g\tRead: %g\tMeanSubtract: %g\tFilter: %g\tDetect: %g\tStore: %g\tStimTag: %g\tPlot: %g \t Mean Compute: %g\tContraction: %g\n',scansToRead,size(newData,2),t8*1000,t1*1000,(t2-t1)*1000,(t3-t2)*1000,(t4-t3)*1000,(t5-t4)*1000,(t6-t5)*1000,(t7-t6)*1000,(t8-t7)*1000,(t9-t8)*1000);
+                fprintf('Total Time (%d scans of %d channels): %g\tRead: %g\tMeanSubtract: %g\tFilter: %g\tDetect: %g\tStore: %g\tStimTag: %g\tPlot: %g \t Mean Compute: %g\tContraction: %g\n',scansToRead,size(newData,2),t8*1000,t1*1000,(t2-t1)*1000,(t3-t2)*1000,(t4-t3)*1000,(t5-t4)*1000,(t6-t5)*1000,(t7-t6)*1000,(t8-t7)*1000,(t9-t8)*1000);
                 readTime = 1000 * t1;
                 procTimePre = 1000 * (t5-t1);
                 plotTime = 1000 * (t6-t5);
@@ -2239,11 +2254,10 @@ classdef SpokeModel < most.Model
             
         end
         
-        function newSpikeScanNums = zprvDetectNewSpikes(obj,bufStartScanNum)
+        function [newSpikeScanNums,thresholdMultiples] = zprvDetectNewSpikes(obj,bufStartScanNum)
             
             if strcmpi(obj.thresholdType,'rmsMultiple')
                 if obj.baselineRMSLastScan == 0 %No RMS data has been computed yet
-                    fprintf('First RMS computation. INIT_RMS_THRESHOLD: %g\n',obj.INIT_RMS_THRESHOLD);
                     %newSpikeScanNums = cell(numDispChans,1);
                     threshVal = obj.baselineRMS * obj.INIT_RMS_THRESHOLD; %Use pre-set RMS multiplier for first buffer
                 else
@@ -2257,7 +2271,9 @@ classdef SpokeModel < most.Model
                     threshMean = obj.baselineMean;
                 end
                 
-                [newSpikeScanNums, obj.maxNumWaveformsApplied] = ...
+                computeThreshMultiples = nargout > 1; % Determine whether to compute/return threshold multiples for each detected spike                                                      
+                    
+                [newSpikeScanNums, obj.maxNumWaveformsApplied,thresholdMultiples] = ...
                     zlclDetectSpikes(obj.reducedData, ... 
                     obj.fullDataBuffer, ...
                     bufStartScanNum, ...
@@ -2267,7 +2283,8 @@ classdef SpokeModel < most.Model
                     threshMean, ...
                     obj.refreshPeriodMaxNumWaveforms, ...
                     obj.debug, ...
-                    obj.diagramm ...
+                    obj.diagramm, ...
+                    computeThreshMultiples ...
                     ... %obj.horizontalRangeScans %DEPRECATED. Removed spike detection dependence on horizontalRange; no known justification for this dependence at this time.
                     ); %Detect spikes from beginning in all but the spike-window-post time, imposing a 'refractory' period of the spike-window-post time after each detected spike
                 
@@ -2283,7 +2300,8 @@ classdef SpokeModel < most.Model
                     0, ...
                     obj.refreshPeriodMaxNumWaveforms, ...
                     obj.debug, ...
-                    obj.diagramm ...
+                    obj.diagramm, ...
+                    computeThreshMultiples ...
                     ... %obj.horizontalRangeScans %DEPRECATED. Removed spike detection dependence on horizontalRange; no known justification for this dependence at this time.
                     ); %Detect spikes from beginning in all but the spike-window-post time, imposing a 'refractory' period of the spike-window-post time after each detected spike
             end         
@@ -2991,7 +3009,7 @@ end
 
 
 %% LOCAL FUNCTIONS
-function [newSpikeScanNums, maxNumWaveformsApplied] = zlclDetectSpikes(reducedData,fullDataBuffer,bufStartScanNum,postSpikeNumScans,thresholdVal,thresholdAbsolute,baselineMean,maxNumSpikes,debug, diagramm)%,horizontalRangeScans
+function [newSpikeScanNums, maxNumWaveformsApplied, thresholdMultiples] = zlclDetectSpikes(reducedData,fullDataBuffer,bufStartScanNum,postSpikeNumScans,thresholdVal,thresholdAbsolute,baselineMean,maxNumSpikes,debug, diagramm, computeThreshMultiples)%,horizontalRangeScans
 %Detect spikes from beginning in all but the spike-window-post time, imposing a 'refractory' period of the spike-window-post time after each detected spike
 %
 % reducedData: Cell array, one element per channel, containing data for each detected spike (from earlier timer callback period(s))
@@ -3012,6 +3030,11 @@ function [newSpikeScanNums, maxNumWaveformsApplied] = zlclDetectSpikes(reducedDa
 maxNumWaveformsApplied = false;
 numChans = length(reducedData);
 newSpikeScanNums = cell(numChans,1);
+if computeThreshMultiples
+    thresholdMultiples = cell(numChans,1);
+else
+    thresholdMultiples = [];
+end
 
 %spikesFoundPerChan = zeros(numChans,1);
 
@@ -3096,6 +3119,14 @@ for h=1:numChans
         spikeScanNums = bufStartScanNum + validSpikeIdx - 1; %Scan numbers corresponding to the spikes
         newSpikes = ~ismember(spikeScanNums ,recentSpikeScanNums); %Only keep the new spikes
         newSpikeScanNums{h} = [newSpikeScanNums{h} , spikeScanNums( newSpikes )];
+        
+        % Return threshold crossing multiples if needed
+        if computeThreshMultiples
+            thresholdMultiples{h} = [];
+            newSpikeIdxs = newSpikeScanNums{h} - bufStartScanNum + 1;
+            thresholdMultiples{h} = fullDataBuffer(newSpikeIdxs)/thresholdVal(h);                        
+        end              
+                        
 %localspikes{h} = [localspikes{h} , validSpikeIdx( newSpikes )]; %debug-only
         %spikesFoundPerChan(h) = sum(newSpikes);
         %t1=toc();
