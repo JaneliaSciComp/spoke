@@ -130,14 +130,10 @@ classdef SpokeModel < most.Model
         hPSTHs; %Array of axes handles, one for each axes in grid
         hRasterLines; %Cell array of arrays, one per stimEventType, containing animated line objects for each raster plot in grid
         
-        numActiveTabs;
-        
-        sglStreamChans; %SpikeGLX streamed channels. These include all SpikeGLX channels (both neural and non-neural) irrespective of any save or display subsetting configured in SpikeGLX.        
-       
-        neuralChanAcqList; %Ascending list of neural chans within sglStreamChans.
-        neuralChanDispList; %Ordered list of neural chans within sglStreamChans, specifying display ordering. NOTE: channel map/reordering functionality is not currently supported
-        auxChanProcList; %Ascending list of auxiliary chans (TOCHECK: restricted to within SpikeGLX save chans?)
-        
+        %Channel display control
+        numActiveTabs;        
+        neuralChanDispList; % Ordered list of neural chans within sglStreamChans, specifying display ordering. NOTE: channel map/reordering functionality is not currently supported!
+              
         baselineRMS; %Array of RMS values, one per channel, computed from all non-spike-window scans from within last baselineRMSTime
         baselineMean; %Array of mean values, one per channel, computed from all non-spike-window scans from within last baselineRMSTime
         baselineRMSLastScan = 0; %Last scan number at which threshold RMS value was updated
@@ -158,7 +154,7 @@ classdef SpokeModel < most.Model
         filterCoefficients = {}; %Cell array of a,b filter coefficients for current filterWindow
         filterCondition; %Maintain 'initial condition' of filter between calls to filter()
         
-        tabChanIdxs; %Array of indices (one-based) into neural chan list (i.e. neuralChanAcqList, nerualChanDispList, exact logic TBD) for currently specified tabDisplayed value
+        tabChanIdxs; %Array of indices (one-based) into neural chan list (i.e. neuralChansAvailable or neuralChanDispList, w/ exact logic TBD) for currently specified tabDisplayed value
         
         blockTimer = false; %Flag used to block timer callback actions during certain operations
         
@@ -197,7 +193,9 @@ classdef SpokeModel < most.Model
     properties (Hidden, SetAccess=immutable)
         sglIPAddress; %IP Address for remote control connection to SpikeGLX
         
-        %Number of logical chans of each of the sub-types available, as configured via the SpikeGLX NI Configuration
+        sglStreamChans; %SpikeGLX streamed channels, i.e. all channels (both neural and non-neural) irrespective of any save or display subsetting configured in SpikeGLX.
+
+        %Logical chans of each of the sub-types available, as configured via the SpikeGLX NI Configuration
         neuralChansAvailable;
         analogMuxChansAvailable;
         analogSoloChansAvailable;
@@ -359,11 +357,11 @@ classdef SpokeModel < most.Model
             %Initialize a default display for appearances (some aspects gets overridden by processing on start())
             obj.zprvApplyNeuralChansAndChanMap();
             
-            nnca = numel(obj.neuralChanAcqList);
-            obj.hThresholdLines = repmat({ones(nnca,1) * -1},2,1);
+            nca = numel(obj.neuralChansAvailable);
+            obj.hThresholdLines = repmat({ones(nca,1) * -1},2,1);
             
             %Allocate spike waveforms & raster plots
-            obj.hWaveforms = gobjects(nnca,1);
+            obj.hWaveforms = gobjects(nca,1);
             for i=1:obj.PLOTS_PER_TAB
                 obj.hWaveforms(i) = animatedline('Parent',obj.hPlots(i),'Color','k','MaximumNumPoints',Inf,'Marker','.','MarkerSize',3,'LineStyle','-');
             end
@@ -401,9 +399,9 @@ classdef SpokeModel < most.Model
         
         function ziniCreateGrids(obj)
             
-            nnca = numel(obj.neuralChanAcqList);
+            nca = numel(obj.neuralChansAvailable);
             
-            obj.numActiveTabs = ceil(nnca/obj.PLOTS_PER_TAB);
+            obj.numActiveTabs = ceil(nca/obj.PLOTS_PER_TAB);
             assert(obj.numActiveTabs <= obj.MAX_NUM_TABS,'Exceeded maximum number of tabs (%d)',obj.MAX_NUM_TABS); %TODO: Deal more gracefully
             
             %This is a good idea...but let's keep it simple for now
@@ -608,8 +606,8 @@ classdef SpokeModel < most.Model
         end
         
         function val = get.numTabs(obj)
-            nnca = numel(obj.neuralChanAcqList);
-            val = ceil(nnca/obj.PLOTS_PER_TAB);
+            nca = numel(obj.neuralChansAvailable);
+            val = ceil(nca/obj.PLOTS_PER_TAB);
         end
         
         function val = get.refreshPeriodMaxNumWaveforms(obj)
@@ -954,12 +952,12 @@ classdef SpokeModel < most.Model
                 dispType = obj.displayMode;
 
                 %Update tabChanIdxs
-                nnca = numel(obj.neuralChanAcqList); 
+                nca = numel(obj.neuralChansAvailable); 
                 
                 tci = (1:obj.PLOTS_PER_TAB) + (val-1)*obj.PLOTS_PER_TAB;
                 %tci(tci > nnca) = []; 
                 
-                obj.tabChanIdxs = tci(tci <= nnca); %Store only the tab chan indices corresponding to available neural channels
+                obj.tabChanIdxs = tci(tci <= nca); %Store only the tab chan indices corresponding to available neural channels
                 
                 t(1) = toc(t0);
 
@@ -1002,7 +1000,7 @@ classdef SpokeModel < most.Model
                     %                         textPosition = [.08 .92];
                     %                     end                    
                     
-                    %chanLabelString = num2str(obj.neuralChanAcqList(tci(i)));    
+                    %chanLabelString = num2str(obj.neuralChansAvailable(tci(i)));    
                     chanLabelString = num2str(tci(i)-1); % Apply label irrespective of whether neural channel is available
                     textPosition = [.08 .92];               
                     
@@ -1205,7 +1203,7 @@ classdef SpokeModel < most.Model
                         fnames = obj.stimEventTypes;
                     end
                     
-                    for i=1:numel(obj.neuralChanAcqList)
+                    for i=1:numel(obj.neuralChansAvailable)
                         for j=1:length(fnames)
                             obj.reducedData{i}.stimEventTypeStruct.(fnames{j}) = [];
                         end
@@ -1548,7 +1546,7 @@ classdef SpokeModel < most.Model
                     obj.maxReadableScanNum = cnt;
                 end
                 
-                numNeuralChans = numel(obj.neuralChanAcqList);
+                numNeuralChans = numel(obj.neuralChansAvailable);
 
                 rmsMultipleActive = isequal(obj.thresholdType,'rmsMultiple') || isequal(obj.waveformAmpUnits,'rmsMultiple');
                 rmsMultipleInitializing = rmsMultipleActive && obj.baselineRMSLastScan == 0;
@@ -1597,21 +1595,19 @@ classdef SpokeModel < most.Model
                 
                 %STAGE 2: Apply global mean subtraction, if applicable. Applies only to neural channels. TODO: Restrict to displayed channels
                 if obj.globalMeanSubtraction
-                    idx = numel(obj.neuralChanAcqList);
-                    newData(:,1:idx) = newData(:,1:idx) - mean(mean(newData(:,1:idx)));
+                    newData(:,1:numNeuralChans) = newData(:,1:numNeuralChans) - mean(mean(newData(:,1:numNeuralChans)));
                 end
                 t2 = toc(t0);
                 
                 %STAGE 3: Filter data if needed. Also: housekeeping to form fullDataBuffer & partialWaveformBuffer for subsequent processing stages.
                 if ~isempty(obj.filterCoefficients)
-                    idx = numel(obj.neuralChanAcqList);
-                    [newData(:,1:idx),obj.filterCondition] = filter(obj.filterCoefficients{2},obj.filterCoefficients{1},double(newData(:,1:idx)),obj.filterCondition); %Convert to double..but still in A/D count values, not voltages
+                    [newData(:,1:numNeuralChans),obj.filterCondition] = filter(obj.filterCoefficients{2},obj.filterCoefficients{1},double(newData(:,1:numNeuralChans)),obj.filterCondition); %Convert to double..but still in A/D count values, not voltages
                 end
                 
                 
                 %Housekeeping: Form partialWaveformBuffer, appending new data
                 if ~isempty(obj.waveformWrap)
-                    for hiter=1:numel(obj.neuralChanAcqList)
+                    for hiter=1:numNeuralChans
                         iter = obj.sglStreamChans(hiter)+1;
                         obj.partialWaveformBuffer{end, iter} = [obj.partialWaveformBuffer{end, iter};newData(1:obj.waveformWrap(end),iter)];
                     end
@@ -1833,9 +1829,9 @@ classdef SpokeModel < most.Model
                 try
                     
                     if waveformDisplay
-                        chansToStore = obj.neuralChanAcqList(obj.tabChanIdxs);
+                        chansToStore = obj.neuralChansAvailable(obj.tabChanIdxs);
                     else
-                        chansToStore = obj.neuralChanAcqList;
+                        chansToStore = obj.neuralChansAvailable;
                     end
                     
                     
@@ -2078,7 +2074,7 @@ classdef SpokeModel < most.Model
                 
                 taggedSpikeIdxStructInit = cell2struct(repmat({[]},length(obj.stimEventTypes_),1),obj.stimEventTypes_);
                 
-                for b=1:numel(obj.neuralChanAcqList)
+                for b=1:numel(obj.neuralChansAvailable)
                     
                     taggedNewSpike = false;
                     spikesToClear = [];
@@ -2185,7 +2181,7 @@ classdef SpokeModel < most.Model
                 firstPassMode = isempty(newSpikeScanNums); %Handle first pass at RMS detection, when there are no detected spikes yet
                 
                 if ~firstPassMode
-                    for i=1:numel(obj.neuralChanAcqList)
+                    for i=1:numel(obj.neuralChansAvailable)
                         %newRmsData{i} = obj.fullDataBuffer(1:end-obj.horizontalRangeScans(2),i);
                         %batchLength(i) = length(newRmsData{i});
                         
@@ -2210,7 +2206,7 @@ classdef SpokeModel < most.Model
                 
                 % Update mean & RMS computation for each pad channel
                 warnNoData = false;
-                for i=1:numel(obj.neuralChanAcqList)
+                for i=1:numel(obj.neuralChansAvailable)
                     if isempty(rmsDataIdxs{i})
                         if ~warnNoData
                             warning('For at least one channel (%d), no data was available for RMS/mean calculations',i);
@@ -2614,7 +2610,7 @@ classdef SpokeModel < most.Model
         
         function zprvDrawThresholdLines(obj)
             
-            nnca = numel(obj.neuralChanAcqList);
+            nca = numel(obj.neuralChansAvailable);
             
             %Clear existing threshold lines
             handlesToClear = [obj.hThresholdLines{1}(isgraphics(obj.hThresholdLines{1})); obj.hThresholdLines{2}(isgraphics(obj.hThresholdLines{2}))];
@@ -2627,7 +2623,7 @@ classdef SpokeModel < most.Model
                 perChanThreshold = ~strcmpi(obj.thresholdType,obj.waveformAmpUnits);
                 if perChanThreshold %RMS threshold with voltage units -- this is only mismatch type presently allowed
                     if isempty(obj.baselineRMS)
-                        obj.hThresholdLines = repmat({ones(nnca,1) * -1},2,1);
+                        obj.hThresholdLines = repmat({ones(nca,1) * -1},2,1);
                         return; %nothing to draw
                     end
                 else %matched units/threshold-type
@@ -2679,13 +2675,13 @@ classdef SpokeModel < most.Model
                 fileRollover = false;
             end
             
-            nnca = numel(obj.neuralChanAcqList);
+            nca = numel(obj.neuralChansAvailable);
             
             obj.fullDataBuffer = zeros(0, numel(obj.sglStreamChans));
             
             if ~fileRollover %&& strcmpi(obj.thresholdType,'rmsMultiple')
-                obj.baselineRMS = zeros(nnca,1);
-                obj.baselineMean = zeros(nnca,1);
+                obj.baselineRMS = zeros(nca,1);
+                obj.baselineMean = zeros(nca,1);
                 obj.baselineRMSLastScan = 0;
             end
             
@@ -2706,14 +2702,14 @@ classdef SpokeModel < most.Model
         function zprvResetReducedData(obj)
             %Method to clear cached spike data; can be either on acquisition 'reset' or in some cases mid-acquisition
             
-            % TODO: Does this work where neuralChanDispList differes from neuralChanAcqList?
+            % TODO: Does this work where neuralChanDispList differes from neuralChansAvailable?
             
-            nnca = numel(obj.neuralChanAcqList);
+            nca = numel(obj.neuralChansAvailable);
             
-            obj.lastPlottedWaveformCountSinceClear = zeros(nnca,1); 
+            obj.lastPlottedWaveformCountSinceClear = zeros(nca,1); 
             
-            obj.reducedData = cell(nnca,1);
-            for i=1:1:nnca
+            obj.reducedData = cell(nca,1);
+            for i=1:1:nca
                 %for i=1:1:numel(obj.sglStreamChans)
                 if strcmpi(obj.displayMode,'waveform')
                     obj.reducedData{i} = struct('scanNums',[],'waveforms',{{}});
@@ -2781,7 +2777,7 @@ classdef SpokeModel < most.Model
                 %for j=1:min(obj.PLOTS_PER_TAB,numel(obj.hThresholdLines{1}))
                 displayToClear = displaysToClear{i};
                 
-                for j=1:min(obj.PLOTS_PER_TAB,numel(obj.neuralChanAcqList))
+                for j=1:min(obj.PLOTS_PER_TAB,numel(obj.neuralChansAvailable))
                                         
                     switch displayToClear
                         case 'waveform'
@@ -2938,20 +2934,15 @@ classdef SpokeModel < most.Model
         end
         
         function zprvApplyNeuralChansAndChanMap(obj)         
- 
-            %obj.sglStreamChans = obj.sglDeviceFcns.GetSaveChans(); % Removed, we're no longer restricting processing to just the saved channels
-
-            obj.neuralChanAcqList = intersect(obj.sglStreamChans,obj.neuralChansAvailable);
             
             if isequal(obj.probeType,'imec3b2') || isempty(obj.sglParamCache.snsNiChanMapFile)
                 fprintf('Channel Remapping: no snsNiChanMapFile defined in SpikeGLX, defaulting to standard mapping...\n');
-                obj.neuralChanDispList = obj.neuralChanAcqList;
+                obj.neuralChanDispList = obj.neuralChansAvailable;
             else
                 fprintf('Channel Remapping: using snsNiChanMapFile located at: %s\n',obj.sglParamCache.snsNiChanMapFile);
                 obj.neuralChanDispList = parseChanMapFile(obj,obj.sglParamCache.snsNiChanMapFile); %TODO: verify channel map parsing and its transformation to neuralChanDispList (done as a simple assignment here as a placeholder)
             end                        
             
-            obj.auxChanProcList = [obj.analogMuxChansAvailable obj.analogSoloChansAvailable]; %TODO: determine if any extra processing is required here 
         end
         
         function zprvInitializeRasterGridLines(obj)
