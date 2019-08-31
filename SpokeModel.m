@@ -133,9 +133,7 @@ classdef SpokeModel < most.Model
         %Channel display control
         numActiveTabs;        
         neuralChanDispList; % Ordered list of neural chans within sglStreamChans, specifying display ordering. NOTE: channel map/reordering functionality is not currently supported!
-        
-        auxChanProcList; %Ascending list of auxiliary chans (TOCHECK: restricted to within SpikeGLX save chans?)
-        
+              
         baselineRMS; %Array of RMS values, one per channel, computed from all non-spike-window scans from within last baselineRMSTime
         baselineMean; %Array of mean values, one per channel, computed from all non-spike-window scans from within last baselineRMSTime
         baselineRMSLastScan = 0; %Last scan number at which threshold RMS value was updated
@@ -2945,7 +2943,6 @@ classdef SpokeModel < most.Model
                 obj.neuralChanDispList = parseChanMapFile(obj,obj.sglParamCache.snsNiChanMapFile); %TODO: verify channel map parsing and its transformation to neuralChanDispList (done as a simple assignment here as a placeholder)
             end                        
             
-            obj.auxChanProcList = [obj.analogMuxChansAvailable obj.analogSoloChansAvailable]; %TODO: determine if any extra processing is required here 
         end
         
         function zprvInitializeRasterGridLines(obj)
